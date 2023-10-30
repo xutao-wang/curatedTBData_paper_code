@@ -418,7 +418,7 @@ get_mean_auc <- function(df, column_name_variable, column_name_value,
     if (method == "empirical") {
         ## Compute deltastar for each bootstrap sample
         deltastar <- bsmeans - xbar
-        ## Find the 0.0.25 and 0.975 quantile for deltastar
+        ## Find the 0.025 and 0.975 quantile for deltastar
         d <- stats::quantile(deltastar, c(lower, upper), na.rm = TRUE)
         ## Calculate the confidence interval for the mean.
         ci <- xbar - c(d[2], d[1])
@@ -617,82 +617,6 @@ heatmap_auc <- function(combine_dat, GSE_sig = NULL,
     return(re)
 }
 
-# Define meta function for heatmap, ridge plot, and mean AUC tables
-TBData_results <- function(object_list, GSEAMethods = c("ssGSEA", "PLAGE"), 
-                           annotaionColName, annotationCondition,
-                           signatureName = NULL) {
-    object_list_sub <- lapply(object_list, function(x)
-        subset_curatedTBData(x, annotationColName = annotaionColName,
-                             annotationCondition = annotationCondition, 
-                             assayName = "assay_curated"))
-    # Remove NULL list
-    object_list_sub <- object_list_sub[!vapply(object_list_sub, is.null, TRUE)]
-    GSEAMethod <- match.arg(GSEAMethods)
-    TBsignatures <- TBSignatureProfiler::TBsignatures
-    if (!is.null(signatureName)) {
-        TBsignatures <- TBsignatures[signatureName]
-    }
-    gsea_out <- lapply(object_list_sub,
-                              function(x) TBSignatureProfiler::runTBsigProfiler(
-                                  input = x,
-                                  useAssay = 1,
-                                  signatures = TBsignatures,
-                                  algorithm = GSEAMethod,
-                                  update_genes = TRUE))
-    out_combine <- combine_auc(gsea_out,
-                               annotationColName = annotaionColName,
-                               signatureColNames = names(TBsignatures),
-                               num.boot = NULL, percent = 0.95)
-    re <- list(gsea_out = gsea_out, out_combine = out_combine)
-    return(re)
-    p_heatmap <- heatmap_auc(out_combine, GSE_sig = SignatureInfoTraining, 
-                             facet = TRUE, clustering = TRUE) + 
-        ggtitle(sprintf("AUC Distribution using %s for %s vs. %s", 
-                        GSEAMethod, annotationCondition[1], annotationCondition[2]))
-    dat_lines <- data.frame(Signature = out_combine$Signature, x0 = 0.5)
-    p_ridge <- ggplot2::ggplot(out_combine,
-                               aes(x = AUC, y = Signature)) +
-        ggridges::geom_density_ridges(jittered_points = TRUE, alpha = 0.7,
-                                      quantile_lines = TRUE, quantiles = 2) +
-        ggplot2::geom_segment(data = dat_lines,
-                              aes(x = x0, xend = x0,
-                                  y = as.numeric(Signature),
-                                  yend = as.numeric(Signature) + 0.9),
-                              color = "red")
-}
-# Test
-# tt <- TBData_results(object_list = object_list, GSEAMethods = "ssGSEA", 
-#                      annotaionColName = "TBStatus", 
-#                      annotationCondition = c("LTBI", "Control"),
-#                      signatureName = c(1:4))
-plot_TBData_results <- function(re, 
-                                plot_type = c("mean table", "heatmap","ridgeplot")) {
-    out_combine <- re[["out_combine"]]
-    plot_type <- match.arg(plot_type)
-    if (plot_type == "mean table") {
-        re <- get_mean_auc(out_combine,
-                                     column_name_variable = "Signature",
-                                     column_name_value = "AUC",
-                                     method = "percentile", num.boot = 1000,
-                                     percent = 0.95)
-    } else if (plot_type == "heatmap") {
-        re <- heatmap_auc(out_combine, GSE_sig = SignatureInfoTraining, 
-                          facet = TRUE, clustering = FALSE)
-    } else if (plot_type == "ridgeplot") {
-        dat_lines <- data.frame(Signature = out_combine$Signature, x0 = 0.5)
-        re <- ggplot2::ggplot(out_combine,
-                                   aes(x = AUC, y = Signature)) +
-            ggridges::geom_density_ridges(jittered_points = TRUE, alpha = 0.7,
-                                          quantile_lines = TRUE, quantiles = 2) +
-            ggplot2::geom_segment(data = dat_lines,
-                                  aes(x = x0, xend = x0,
-                                      y = as.numeric(Signature),
-                                      yend = as.numeric(Signature) + 0.9),
-                                  color = "red")
-    }
-    return(re)
-}
-
 update_genenames <- function(siglist) {
     newgenes <- suppressMessages(suppressWarnings(
         HGNChelper::checkGeneSymbols(siglist,
@@ -820,10 +744,14 @@ find_sig_with_max_AUC <- function(gsea_AUC, gsea_ensl, ensemble_sig_list,
     test_study <- gsea_ensl_list[[1]] |> 
         dplyr::select(Study)
     # Get mean AUC for each signature using gene set scores
-    gsea_AUC_mean <- gsea_AUC |> 
-        dplyr::group_by(Signature) |> 
-        dplyr::summarise(mean_AUC = mean(AUC)) |> 
+    gsea_AUC_mean <- gsea_AUC |>
+        dplyr::group_by(Signature) |>
+        dplyr::summarise(mean_AUC = weighted.mean(AUC, sample_size)) |>
         dplyr::mutate(ranks = dense_rank(-mean_AUC))
+    # gsea_AUC_mean <- gsea_AUC |>
+    #     dplyr::group_by(Signature) |>
+    #     dplyr::summarise(mean_AUC = mean(AUC)) |>
+    #     dplyr::mutate(ranks = dense_rank(-mean_AUC))
     n <- length(ensemble_sig_list)
     # Get signature with max AUC based on their mean
     signature_with_max_AUC <- lapply(1:n, function(i) {
@@ -851,8 +779,9 @@ find_sig_with_max_AUC <- function(gsea_AUC, gsea_ensl, ensemble_sig_list,
         weighted_mean_AUC <- vapply(1:1000, function(j) {
             set.seed(j^2)
             index <- sample(seq_len(nrow(gsea_AUC_sig_max)), replace = TRUE)
-            weighted.mean(gsea_AUC_sig_max[index, "AUC"], 
+            weighted.mean(gsea_AUC_sig_max[index, "AUC"],
                           gsea_AUC_sig_max[index, "sample_size"])
+            # mean(gsea_AUC_sig_max[index, "AUC"])
         }, numeric(1))
         
         data.frame(AUC = weighted_mean_AUC, Signature = sig_max) |> 
@@ -867,8 +796,9 @@ find_sig_with_max_AUC <- function(gsea_AUC, gsea_ensl, ensemble_sig_list,
         mean_AUC <- vapply(1:1000, function(j) {
             set.seed(j^2)
             index <- sample(seq_len(nrow(gsea_ensl_set)), replace = TRUE)
-            weighted.mean(gsea_ensl_set[index, "AUC"], 
+            weighted.mean(gsea_ensl_set[index, "AUC"],
                           gsea_ensl_set[index, "sample_size"])
+            # mean(gsea_ensl_set[index, "AUC"])
         }, numeric(1))
         data.frame(AUC = mean_AUC, Signature = names(ensemble_sig_list)[i]) |> 
             dplyr::mutate(Set = Signature) |> 
@@ -883,6 +813,92 @@ find_sig_with_max_AUC <- function(gsea_AUC, gsea_ensl, ensemble_sig_list,
         dplyr::mutate(Set = gsub("Set", "Set ", Set))
     AUC_final$Set <- factor(AUC_final$Set, levels = sig_list_names_edit)
     
+    
+    signature_with_max_AUC$Set <- gsub("Set", "Set ", signature_with_max_AUC$Set) |> 
+        factor(levels = sig_list_names_edit)
+        
+    final_list <- list(AUC_final = AUC_final, 
+                       signature_with_max_AUC = signature_with_max_AUC)
+    return(final_list)
+}
+find_sig_with_max_AUC1 <- function(gsea_AUC, gsea_ensl, ensemble_sig_list, 
+                                  gsea_method) {
+    gsea_ensl_list <- split(gsea_ensl, gsea_ensl$Set)
+    test_study <- gsea_ensl_list[[1]] |> 
+        dplyr::select(Study)
+    # Get mean AUC for each signature using gene set scores
+    gsea_AUC_mean <- gsea_AUC |>
+        dplyr::group_by(Signature) |>
+        dplyr::summarise(mean_AUC = weighted.mean(AUC, sample_size)) |>
+        dplyr::mutate(ranks = dense_rank(-mean_AUC))
+    # gsea_AUC_mean <- gsea_AUC |>
+    #     dplyr::group_by(Signature) |>
+    #     dplyr::summarise(mean_AUC = mean(AUC)) |>
+    #     dplyr::mutate(ranks = dense_rank(-mean_AUC))
+    n <- length(ensemble_sig_list)
+    # Get signature with max AUC based on their mean
+    signature_with_max_AUC <- lapply(1:n, function(i) {
+        x <- ensemble_sig_list[[i]]
+        sig_max <- gsea_AUC_mean |> 
+            dplyr::filter(Signature %in% x) |> 
+            dplyr::filter(ranks == min(ranks)) |> 
+            dplyr::pull(Signature)
+
+        data.frame(Set = names(ensemble_sig_list)[i], Signature = sig_max)
+    }) |> 
+        dplyr::bind_rows() |> 
+        dplyr::mutate(Signature_type = "Single") |> 
+        dplyr::mutate(Method = gsea_method)
+  
+    # Get max siganture's AUC value
+    max_signature_AUCs <- lapply(1:n, function(i) {
+        sig_max <- signature_with_max_AUC |> 
+            dplyr::filter(Set == names(ensemble_sig_list)[i]) |> 
+            dplyr::pull(Signature)
+        gsea_AUC_sig_max <- gsea_AUC |> 
+            dplyr::filter(Signature == sig_max) |> 
+            dplyr::right_join(test_study, by = "Study")
+        gsea_AUC_sig_max <- gsea_AUC_sig_max[complete.cases(gsea_AUC_sig_max), ]
+        gsea_AUC_sig_max <- gsea_AUC_sig_max[!duplicated(gsea_AUC_sig_max), ]
+        weighted_mean_AUC <- vapply(1:1000, function(j) {
+            set.seed(j^2)
+            index <- sample(seq_len(nrow(gsea_AUC_sig_max)), replace = TRUE)
+            weighted.mean(gsea_AUC_sig_max[index, "AUC"],
+                          gsea_AUC_sig_max[index, "sample_size"])
+            # mean(gsea_AUC_sig_max[index, "AUC"])
+        }, numeric(1))
+        
+        data.frame(AUC = weighted_mean_AUC, Signature = sig_max) |> 
+            dplyr::mutate(Set = names(ensemble_sig_list)[i]) |> 
+            dplyr::mutate(Signature_type = "Single")
+    }) |> 
+        dplyr::bind_rows()
+    
+    gsea_ensl_sub <- lapply(1:n, function(i) {
+        gsea_ensl_set <- gsea_ensl |> 
+            dplyr::filter(Set == names(ensemble_sig_list)[i]) |> 
+            dplyr::group_by(Study) |> 
+            dplyr::summarise(AUC = max(AUC), 
+                             sample_size = unique(sample_size))
+        mean_AUC <- vapply(1:1000, function(j) {
+            set.seed(j^2)
+            index <- sample(seq_len(nrow(gsea_ensl_set)), replace = TRUE)
+            weighted.mean(gsea_ensl_set[index, "AUC"],
+                          gsea_ensl_set[index, "sample_size"])
+            # mean(gsea_ensl_set[index, "AUC"])
+        }, numeric(1))
+        data.frame(AUC = mean_AUC, Signature = names(ensemble_sig_list)[i]) |> 
+            dplyr::mutate(Set = Signature) |> 
+            dplyr::mutate(Signature_type = "Ensemble")
+    }) |> 
+        dplyr::bind_rows()
+    
+    sig_list_names_edit <- gsub("Set", "Set ", names(ensemble_sig_list))
+    
+    AUC_final <- rbind(gsea_ensl_sub, max_signature_AUCs) |> 
+        dplyr::mutate(Method = gsea_method) |> 
+        dplyr::mutate(Set = gsub("Set", "Set ", Set))
+    AUC_final$Set <- factor(AUC_final$Set, levels = sig_list_names_edit)
     
     signature_with_max_AUC$Set <- gsub("Set", "Set ", signature_with_max_AUC$Set) |> 
         factor(levels = sig_list_names_edit)
@@ -922,3 +938,67 @@ geom_split_violin <- function(mapping = NULL, data = NULL, stat = "ydensity", po
         position = position, show.legend = show.legend, inherit.aes = inherit.aes,
         params = list(trim = trim, scale = scale, draw_quantiles = draw_quantiles, na.rm = na.rm, ...))
 }
+
+get_results_for_ridge <- function(df_ensl, df_single, set_name, threshold = 0.8,
+                                  ensemble_sig_info_list = ensemble_sig_list) {
+    df_ensl_mean <- df_ensl |>
+        dplyr::group_by(Study, Set) |>
+        dplyr::summarise(AUC = max(AUC),
+                         sample_size = mean(sample_size)) |>
+        dplyr::mutate(Signature = Set) |>
+        dplyr::select(-Set)
+    # df_ensl_mean <- df_ensl |>
+    #     dplyr::group_by(Study, Set) |>
+    #     dplyr::summarise(AUC = mean(AUC), 
+    #                      sample_size = mean(sample_size)) |>
+    #     dplyr::mutate(Signature = Set) |>
+    #     dplyr::select(-Set)
+
+    set_ensl <- df_ensl_mean |> 
+        dplyr::filter(Signature == set_name) |> 
+        dplyr::select(Study, Signature, AUC, sample_size)
+    
+    studies <- set_ensl |> 
+        dplyr::filter(AUC >= threshold) |> 
+        dplyr::pull(Study)
+    
+    df_single_sig <- df_single |> 
+        dplyr::filter(Signature %in% ensemble_sig_info_list[[set_name]])
+    sig_order <- df_single_sig |> 
+        dplyr::group_by(Signature) |> 
+        dplyr::summarise(mean_AUC = weighted.mean(AUC, sample_size)) |> 
+        dplyr::arrange(-1 * mean_AUC) |> 
+        dplyr::pull(Signature) |> 
+        as.character()
+    df_combine <- df_single_sig |> 
+        dplyr::select(Study, Signature, AUC, sample_size) |> 
+        rbind(set_ensl) |> 
+        dplyr::filter(Study %in% studies)
+    
+    df_combine$Signature <- factor(df_combine$Signature,
+                                   levels = c(set_name,sig_order))
+    return(df_combine)
+}
+
+# mean_aa <- ssgsea_PTB_LTBI_ensl |> 
+#     dplyr::group_by(Set, Study) |> 
+#     dplyr::summarise(AUC_mean = mean(AUC))
+# median_aa <- ssgsea_PTB_LTBI_ensl |> 
+#     dplyr::group_by(Set, Study) |> 
+#     dplyr::summarise(AUC_median = median(AUC))
+# wtd_mean_aa <- ssgsea_PTB_LTBI_ensl |> 
+#     dplyr::group_by(Set, Study) |> 
+#     dplyr::summarise(AUC_wtd_mean = weighted.mean(AUC, sample_size))
+# 
+# max_aa <- ssgsea_PTB_LTBI_ensl |> 
+#     dplyr::group_by(Set, Study) |> 
+#     dplyr::summarise(AUC_max = max(AUC))
+# compare_re_tmp <- mean_aa |> 
+#     dplyr::inner_join(max_aa, by = c("Set", "Study")) |> 
+#     dplyr::inner_join(median_aa, by = c("Set", "Study")) |> 
+#     dplyr::inner_join(wtd_mean_aa, by = c("Set", "Study")) |> 
+#     dplyr::mutate(Diff_mean = AUC_max - AUC_mean) |> 
+#     dplyr::mutate(Diff_median = AUC_max - AUC_median) |> 
+#     dplyr::mutate(Diff_wtd_mean = AUC_max - AUC_wtd_mean) |> 
+#     mutate(Diff_mean_median = AUC_mean - AUC_median) |> 
+#     mutate(Diff_mean_wtd_mean = AUC_mean - AUC_wtd_mean)
