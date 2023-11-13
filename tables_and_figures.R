@@ -250,7 +250,7 @@ plage_PTB_LTBI_high |>
                      spec_low = weighted.mean(`Spec CI lower.2.5%`, Size),
                      spec_high = weighted.mean(`Spec CI upper.97.5%`, Size))
 
-#### Table S3: Weighted Mean AUC and 95% confidence interval for PTB vs. Control or PTB vs. LTBI ####
+#### Table: Weighted AUCs (95% CI) for PTB vs. Control and PTB vs. LTBI ####
 ssgsea_PTB_Control_CI <- extract_CI(ssgsea_PTB_Control_out_combine)
 ssgsea_PTB_Control_CI_sub <- ssgsea_PTB_Control_CI |> 
     dplyr::mutate(ssgsea_PTB_Control = AUC) |> 
@@ -271,34 +271,94 @@ plage_PTB_LTBI_CI_sub <- plage_PTB_LTBI_CI |>
     dplyr::mutate(plage_PTB_LTBI = AUC) |> 
     dplyr::select(Signature, plage_PTB_LTBI)
 
-tableS3_mean_AUC <- ssgsea_PTB_Control_CI_sub |> 
+table_mean_AUC <- ssgsea_PTB_Control_CI_sub |> 
     dplyr::inner_join(plage_PTB_Control_CI_sub, by = "Signature") |> 
     dplyr::inner_join(ssgsea_PTB_LTBI_CI_sub, by = "Signature") |> 
     dplyr::inner_join(plage_PTB_LTBI_CI_sub, by = "Signature")
-tableS3_mean_AUC_sub <- tableS3_mean_AUC |> 
+table_mean_AUC_sub <- table_mean_AUC |> 
     dplyr::filter(!Signature == "Hoang_OD_3")
     
-tableS3_mean_AUC_sub$Signature <- gsub("_", "\\\\_", tableS3_mean_AUC_sub$Signature)
-write.table(tableS3_mean_AUC_sub, quote = FALSE, row.names = FALSE, 
+table_mean_AUC_sub$Signature <- gsub("_", "\\\\_", table_mean_AUC_sub$Signature)
+write.table(table_mean_AUC_sub, quote = FALSE, row.names = FALSE, 
             col.names = FALSE, sep = " & ",
-            file = file.path(wd, "Figures_and_tables/tableS3_mean_AUC.txt")) 
+            file = file.path(wd, "Figures_and_tables/table_mean_AUC.txt")) 
 
 # Run the following command in terminal (Add '\\\hline' by the end of each line)
-# awk '{print $0, " \\\\\\\hline"}' tableS3_mean_AUC.txt > tableS3_mean_AUC_for_latex.txt
+# awk '{print $0, " \\\\\\\hline"}' table_mean_AUC.txt > table_mean_AUC_for_latex.txt
 
-ssgsea_PTB_Control_AUCs <- gsub(" \\(.*", "",tableS3_mean_AUC$ssgsea_PTB_Control) |> 
+ssgsea_PTB_Control_AUCs <- gsub(" \\(.*", "",table_mean_AUC$ssgsea_PTB_Control) |> 
     as.numeric()
-plage_PTB_Control_AUCs <- gsub(" \\(.*", "",tableS3_mean_AUC$plage_PTB_Control) |> 
+plage_PTB_Control_AUCs <- gsub(" \\(.*", "",table_mean_AUC$plage_PTB_Control) |> 
     as.numeric()
-ssgsea_PTB_LTBI_AUCs <- gsub(" \\(.*", "",tableS3_mean_AUC$ssgsea_PTB_LTBI) |> 
+ssgsea_PTB_LTBI_AUCs <- gsub(" \\(.*", "",table_mean_AUC$ssgsea_PTB_LTBI) |> 
     as.numeric()
-plage_PTB_LTBI_AUCs <- gsub(" \\(.*", "",tableS3_mean_AUC$plage_PTB_LTBI) |> 
+plage_PTB_LTBI_AUCs <- gsub(" \\(.*", "",table_mean_AUC$plage_PTB_LTBI) |> 
     as.numeric()
 
 wilcox.test(ssgsea_PTB_Control_AUCs, ssgsea_PTB_LTBI_AUCs, paired = TRUE)
 wilcox.test(plage_PTB_Control_AUCs, plage_PTB_LTBI_AUCs, paired = TRUE)
 wilcox.test(ssgsea_PTB_Control_AUCs, plage_PTB_Control_AUCs, paired = TRUE)
 wilcox.test(ssgsea_PTB_LTBI_AUCs, plage_PTB_LTBI_AUCs, paired = TRUE)
+
+#### Table: Weighted Sensitivity (95% CI) for PTB vs. Control and PTB vs. LTBI ####
+ssgsea_PTB_Control_CI_sens <- ssgsea_PTB_Control_CI |> 
+    dplyr::mutate(ssgsea_PTB_Control = Sensitivity) |> 
+    dplyr::select(Signature, ssgsea_PTB_Control)
+
+ssgsea_PTB_LTBI_CI_sens <- ssgsea_PTB_LTBI_CI |> 
+    dplyr::mutate(ssgsea_PTB_LTBI = Sensitivity) |> 
+    dplyr::select(Signature, ssgsea_PTB_LTBI)
+
+plage_PTB_Control_CI_sens <- plage_PTB_Control_CI |> 
+    dplyr::mutate(plage_PTB_Control = Sensitivity) |> 
+    dplyr::select(Signature, plage_PTB_Control)
+
+plage_PTB_LTBI_CI_sens <- plage_PTB_LTBI_CI |> 
+    dplyr::mutate(plage_PTB_LTBI = Sensitivity) |> 
+    dplyr::select(Signature, plage_PTB_LTBI)
+
+table_mean_sens <- ssgsea_PTB_Control_CI_sens |> 
+    dplyr::inner_join(plage_PTB_Control_CI_sens, by = "Signature") |> 
+    dplyr::inner_join(ssgsea_PTB_LTBI_CI_sens, by = "Signature") |> 
+    dplyr::inner_join(plage_PTB_LTBI_CI_sens, by = "Signature")
+table_mean_sens <- table_mean_sens |> 
+    dplyr::filter(!Signature == "Hoang_OD_3")
+
+table_mean_sens$Signature <- gsub("_", "\\\\_", table_mean_sens$Signature)
+write.table(table_mean_sens, quote = FALSE, row.names = FALSE, 
+            col.names = FALSE, sep = " & ",
+            file = file.path(wd, "Figures_and_tables/table_mean_sens.txt")) 
+# awk '{print $0, " \\\\\\\hline"}' table_mean_AUC.txt > table_mean_AUC_for_latex.txt
+
+#### Table: Weighted Specificity (95% CI) for PTB vs. Control and PTB vs. LTBI ####
+ssgsea_PTB_Control_CI_spec <- ssgsea_PTB_Control_CI |> 
+    dplyr::mutate(ssgsea_PTB_Control = Specificity) |> 
+    dplyr::select(Signature, ssgsea_PTB_Control)
+
+ssgsea_PTB_LTBI_CI_spec <- ssgsea_PTB_LTBI_CI |> 
+    dplyr::mutate(ssgsea_PTB_LTBI = Specificity) |> 
+    dplyr::select(Signature, ssgsea_PTB_LTBI)
+
+plage_PTB_Control_CI_spec <- plage_PTB_Control_CI |> 
+    dplyr::mutate(plage_PTB_Control = Specificity) |> 
+    dplyr::select(Signature, plage_PTB_Control)
+
+plage_PTB_LTBI_CI_spec <- plage_PTB_LTBI_CI |> 
+    dplyr::mutate(plage_PTB_LTBI = Specificity) |> 
+    dplyr::select(Signature, plage_PTB_LTBI)
+
+table_mean_spec <- ssgsea_PTB_Control_CI_spec |> 
+    dplyr::inner_join(plage_PTB_Control_CI_spec, by = "Signature") |> 
+    dplyr::inner_join(ssgsea_PTB_LTBI_CI_spec, by = "Signature") |> 
+    dplyr::inner_join(plage_PTB_LTBI_CI_spec, by = "Signature")
+table_mean_spec <- table_mean_spec |> 
+    dplyr::filter(!Signature == "Hoang_OD_3")
+
+table_mean_spec$Signature <- gsub("_", "\\\\_", table_mean_spec$Signature)
+write.table(table_mean_spec, quote = FALSE, row.names = FALSE, 
+            col.names = FALSE, sep = " & ",
+            file = file.path(wd, "Figures_and_tables/table_mean_spec.txt")) 
+
 #### Figure 1: Flowchart of curatedTBData #### 
 ##### Enseml ID for RNA-seq ####
 geo <- "GSE107991"
@@ -406,7 +466,7 @@ figureS1 <- cowplot::plot_grid(heatmap_ssgsea_PTB_Control,
                                heatmap_plage_PTB_Control,
                                align = "h")
 ggsave(figureS1,
-       file = file.path(wd, "Figures_and_tables/FigureS1_PTB_Control.pdf"),
+       file = file.path(wd, "Figures_and_tables/heatmap_PTB_Control.pdf"),
        device = "pdf", height = 18, width = 20)
 
 #### Figure S2 PTB vs. LTBI ####
@@ -427,7 +487,7 @@ figureS2 <- cowplot::plot_grid(heatmap_ssgsea_PTB_LTBI,
                                heatmap_plage_PTB_LTBI,
                                align = "h")
 ggsave(figureS2,
-       file = file.path(wd, "Figures_and_tables/FigureS2_PTB_LTBI.pdf"),
+       file = file.path(wd, "Figures_and_tables/heatmap_PTB_LTBI.pdf"),
        device = "pdf", height = 18, width = 18)
 
 #### Ensemble learning ####
@@ -615,21 +675,36 @@ AUC_final_sub <- rbind(AUC_final_PTB_Control, AUC_final_PTB_LTBI)
 signature_with_max_AUC_sub <- rbind(signature_with_max_AUC_PTB_Control,
                                     signature_with_max_AUC_PTB_LTBI)
 
-p_ensl_sub <- ggplot(AUC_final_sub, 
-       aes(Method, AUC, fill = Signature_type)) +
+p_ensl_sub_PTB_Control <- AUC_final_sub |> 
+    dplyr::filter(Comparison == "PTB vs. Control") |> 
+    ggplot(aes(Method, AUC, fill = Signature_type)) +
     labs(fill = "Signature type") +
     geom_split_violin() + 
-    facet_grid(rows = vars(Comparison), cols = vars(Set), switch = "y") +
-    geom_text(data = signature_with_max_AUC_sub,
+    facet_grid(cols = vars(Set)) +
+    geom_text(data = signature_with_max_AUC_PTB_Control,
+              aes(x = Method, y = 0.90, label = Signature), 
+              size = 3, angle = 10) +
+    theme_bw() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_text(size = 8, face = "bold"))
+ggsave(file.path(wd, "Figures_and_tables/p_ensl_sub_PTB_Control.pdf"),
+       p_ensl_sub_PTB_Control, device = "pdf", width = 10, height = 3)
+
+p_ensl_sub_PTB_LTBI <- AUC_final_sub |> 
+    dplyr::filter(Comparison == "PTB vs. LTBI") |> 
+    ggplot(aes(Method, AUC, fill = Signature_type)) +
+    labs(fill = "Signature type") +
+    geom_split_violin() + 
+    facet_grid(cols = vars(Set)) +
+    geom_text(data = signature_with_max_AUC_PTB_LTBI,
               aes(x = Method, y = 0.88, label = Signature), 
               size = 3, angle = 10) +
     theme_bw() +
     theme(axis.title.x = element_blank(),
           axis.text.x = element_text(size = 8, face = "bold"))
 
-# ggsave(file.path(wd, "Figures_and_tables/Figure3_ensemble_sub.pdf"),
-#        p_ensl_sub, device = "pdf", width = 10, height = 6)
-
+ggsave(file.path(wd, "Figures_and_tables/p_ensl_sub_PTB_LTBI.pdf"),
+       p_ensl_sub_PTB_LTBI, device = "pdf", width = 10, height = 3)
 ##### p values for viollin plot comparisons #####
 compare_single_ensl <- function(df_ensl, set_name, df_single, single_name) {
     AUC_set_ensl <- df_ensl |> 
@@ -646,15 +721,15 @@ compare_single_ensl <- function(df_ensl, set_name, df_single, single_name) {
                row.names = NULL)
 }
 
-get_AUC_CI_ensl_single <- function(df, set, signature,
+get_AUC_CI_ensl_single <- function(df, set,type, 
                                    comparison, method) {
     df |> 
         dplyr::filter(Set == set,
-                      Signature == signature, 
                       Comparison == comparison,
+                      Signature_type == type,
                       Method == method) |> 
         dplyr::pull(AUC) |> 
-        stats::quantile(c(0.025, 0.975), na.rm = TRUE)
+        stats::quantile(c(0.025, 0.5, 0.975), na.rm = TRUE)
 }
 
 get_pvalue_ensl <- function(sig_with_max_AUC, method, df_ensl, df_single) {
@@ -685,34 +760,58 @@ p_value_ssgsea_PTB_LTBI <- PTB_LTBI_ensl$signature_with_max_AUC |>
     get_pvalue_ensl("ssGSEA", ssgsea_PTB_LTBI_ensl, ssgsea_PTB_LTBI_edit_AUC)
 
 ###### Set 6 ######
+# PTB vs. Control
 p_value_plage_PTB_Control |> 
     dplyr::filter(Set == "Set6") # 8.996961e-03
 p_value_ssgsea_PTB_Control |> 
     dplyr::filter(Set == "Set6") # 0.0001411727
-
-get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 6", signature = "Roe_3",
+## PLAGE
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 6", type = "Ensemble",
                        comparison = "PTB vs. Control", method = "PLAGE")
-get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 6", signature = "Roe_3",
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 6", type = "Single",
+                       comparison = "PTB vs. Control", method = "PLAGE")
+## ssGSEA
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 6", type = "Ensemble",
                        comparison = "PTB vs. Control", method = "ssGSEA")
-
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 6", type = "Single",
+                       comparison = "PTB vs. Control", method = "ssGSEA")
+# PTB vs. LTBI
 p_value_plage_PTB_LTBI |> 
     dplyr::filter(Set == "Set6") # 0.01043963
 p_value_ssgsea_PTB_LTBI |> 
     dplyr::filter(Set == "Set6") # 9.470883e
 
 ###### Set 21 ######
+# PTB vs. Control
 p_value_plage_PTB_Control |> 
     dplyr::filter(Set == "Set21") # 0.7820349
 p_value_ssgsea_PTB_Control |> 
     dplyr::filter(Set == "Set21") # 1.294722e-06
+
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", type = "Ensemble",
+                       comparison = "PTB vs. Control", method = "PLAGE")
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", type = "Single",
+                       comparison = "PTB vs. Control", method = "PLAGE")
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", type = "Ensemble",
+                       comparison = "PTB vs. Control", method = "ssGSEA")
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", type = "Single",
+                       comparison = "PTB vs. Control", method = "ssGSEA")
+
 
 p_value_plage_PTB_LTBI |> 
     dplyr::filter(Set == "Set21") # 2.105078e-09
 p_value_ssgsea_PTB_LTBI |> 
     dplyr::filter(Set == "Set21") # 9.907839e-06
 
-get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", signature = "LauxdaCosta_OD_3",
-                       comparison = "PTB vs. Control", method = "PLAGE")
+
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", type = "Ensemble",
+                       comparison = "PTB vs. LTBI", method = "PLAGE")
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", type = "Single",
+                       comparison = "PTB vs. LTBI", method = "PLAGE")
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", type = "Ensemble",
+                       comparison = "PTB vs. LTBI", method = "ssGSEA")
+get_AUC_CI_ensl_single(AUC_final_sub, set = "Set 21", type = "Single",
+                       comparison = "PTB vs. LTBI", method = "ssGSEA")
 ###### Set 22 ######
 p_value_plage_PTB_Control |> 
     dplyr::filter(Set == "Set22") # 0.1178086
@@ -722,9 +821,9 @@ p_value_ssgsea_PTB_Control |>
 p_value_plage_PTB_LTBI |> 
     dplyr::filter(Set == "Set22") # 0.01167012
 p_value_ssgsea_PTB_LTBI |> 
-    dplyr::filter(Set == "Set22") # 1.267017e
+    dplyr::filter(Set == "Set22") # 1.267017e-06
 
-##### Figure 4A: Ridge plot for PTB vs. Control #####
+##### Figure: Sub Ridge plot for PTB vs. Control #####
 my_set_ridge <- c("Set6", "Set21", "Set22")
 get_ridge_plot <- function(df_ensl1, df_single1, method1,
                            df_ensl2, df_single2, method2, 
@@ -749,51 +848,20 @@ p_ridge_Control_sub_list <- lapply(my_set_ridge, function(set_name) {
                    plage_PTB_Control_ensl, plage_PTB_Control_edit_AUC, "PLAGE",
                    set_name, threshold = 0.5)
 })
-p_ridge_Control_sub <- do.call("grid.arrange", 
+p_ridge_sub_PTB_Control <- do.call("grid.arrange", 
                                c(p_ridge_Control_sub_list, ncol= 3))
-# ggsave(file.path(wd, "Figures_and_tables/Figure4_PTB_Control_ridge_sub.pdf"),
-#        p_ridge_Control_sub, device = "pdf", width = 16, height = 8)
-##### Figure 4B: Sub Plot Ridge plot for PTB vs. Control #####
+# ggsave(file.path(wd, "Figures_and_tables/p_ridge_sub_PTB_Control.pdf"),
+#        p_ridge_sub_PTB_Control, device = "pdf", width = 16, height = 8)
+##### Figure: Sub Ridge plot for PTB vs. LTBI #####
 p_ridge_LTBI_sub_list <- lapply(my_set_ridge, function(set_name) {
     get_ridge_plot(ssgsea_PTB_LTBI_ensl, ssgsea_PTB_LTBI_edit_AUC, "ssGSEA",
                    plage_PTB_LTBI_ensl, plage_PTB_LTBI_edit_AUC, "PLAGE",
                    set_name, threshold = 0.5)
 })
-p_ridge_LTBI_sub <- do.call("grid.arrange", 
+p_ridge_sub_PTB_LTBI <- do.call("grid.arrange", 
                             c(p_ridge_LTBI_sub_list, ncol= 3))
-# ggsave(file.path(wd, "Figures_and_tables/Figure4_PTB_LTBI_ridge_sub.pdf"),
-#        p_ridge_LTBI_sub, device = "pdf", width = 16, height = 8)
-##### Figure S4A Coef PTB vs. Control #####
-ssgsea_PTB_Control_coef <- wd |> 
-    file.path("data/coef_output/ssgsea_PTB_Control_coef.RDS") |> 
-    readRDS()
-plage_PTB_Control_coef <- wd |> 
-    file.path("data/coef_output/plage_PTB_Control_coef.RDS") |> 
-    readRDS()
-PTB_Control_coef <- mapply(function(x, y) {
-    x <- x |> 
-        dplyr::mutate(method = "ssGSEA")
-    y <- y |> 
-        dplyr::mutate(method = "PLAGE")
-    rbind(x, y)
-}, ssgsea_PTB_Control_coef, plage_PTB_Control_coef, SIMPLIFY = FALSE)
-
-p_PTB_Control_coef_list <- lapply(1:length(PTB_Control_coef), function(i) {
-    coef_df <- PTB_Control_coef[[i]]
-    ggplot(coef_df, aes(x = Signature, y = Coefficient)) +
-        geom_hline(yintercept = 0, linetype = "dashed", color = "red") + 
-        geom_boxplot() +
-        scale_y_continuous(limits = c(-2, 2), 
-                           breaks = seq(-2, 2, by = 1)) +
-        ggtitle(names(PTB_Control_coef)[i]) + xlab(NULL) + ylab(NULL) +
-        coord_flip() + 
-        theme_bw() +
-        facet_wrap(~method, ncol = 2)
-})
-p_PTB_Control_coef <- do.call("grid.arrange", 
-                              c(p_PTB_Control_coef_list, ncol= 6))
-# ggsave(file.path(wd, "Figures_and_tables/FigureS4_PTB_Control_coef.pdf"),
-#        p_PTB_Control_coef, device = "pdf", width = 20, height = 10)
+# ggsave(file.path(wd, "Figures_and_tables/p_ridge_sub_PTB_LTBI.pdf"),
+#        p_ridge_sub_PTB_LTBI, device = "pdf", width = 16, height = 8)
 
 ##### Weighted SD for ridge plot ####
 get_wtd_var <- function(x, wt) {
@@ -889,47 +957,123 @@ table(sd_ssgsea_PTB_LTBI_compare$diff_wtd_sd <= 0)
 
 ###### Set 6 ###### 
 # PTB vs. Control
-# PLAGE
+## PLAGE
 sd_plage_PTB_Control |> 
     dplyr::filter(Set == "Set6")
 sd_plage_PTB_Control_sig |> 
-    dplyr::filter(Signature %in% ensemble_sig_list[["Set6"]])
-# ssGSEA
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set6"]]) |> 
+    dplyr::arrange(wtd_std)
+## ssGSEA
 sd_ssgsea_PTB_Control |> 
     dplyr::filter(Set == "Set6")
 sd_ssgsea_PTB_Control_sig |> 
-    dplyr::filter(Signature %in% ensemble_sig_list[["Set6"]])
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set6"]]) |> 
+    dplyr::arrange(wtd_std)
+
 # PTB vs. LTBI
+## PLAGE
 sd_plage_PTB_LTBI |> 
     dplyr::filter(Set == "Set6")
+sd_plage_PTB_LTBI_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set6"]]) |> 
+    dplyr::arrange(wtd_std)
+## ssGSEA
 sd_ssgsea_PTB_LTBI |> 
     dplyr::filter(Set == "Set6")
+sd_ssgsea_PTB_LTBI_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set6"]]) |> 
+    dplyr::arrange(wtd_std)
+
 ###### Set 21 ###### 
 # PTB vs Control
+## PLAGE
 sd_plage_PTB_Control |> 
     dplyr::filter(Set == "Set21")
+sd_plage_PTB_Control_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set21"]]) |> 
+    dplyr::arrange(wtd_std)
+## ssGSEA
+sd_ssgsea_PTB_Control_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set21"]]) |> 
+    dplyr::arrange(wtd_std)
 sd_ssgsea_PTB_Control |> 
     dplyr::filter(Set == "Set21")
+
 # PTB vs. LTBI
+## PLAGE
 sd_plage_PTB_LTBI |> 
     dplyr::filter(Set == "Set21")
+sd_plage_PTB_LTBI_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set21"]]) |> 
+    dplyr::arrange(wtd_std)
+## ssGSEA
 sd_ssgsea_PTB_LTBI |> 
     dplyr::filter(Set == "Set21")
+sd_ssgsea_PTB_LTBI_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set21"]]) |> 
+    dplyr::arrange(wtd_std)
 
 ###### Set 22 ###### 
 # PTB vs Control
+## PLAGE
 sd_plage_PTB_Control |> 
     dplyr::filter(Set == "Set22")
+sd_plage_PTB_Control_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set22"]]) |> 
+    dplyr::arrange(wtd_std)
+## ssGSEA
+sd_ssgsea_PTB_Control_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set22"]]) |> 
+    dplyr::arrange(wtd_std)
 sd_ssgsea_PTB_Control |> 
     dplyr::filter(Set == "Set22")
 # PTB vs. LTBI
+## PLAGE
 sd_plage_PTB_LTBI |> 
     dplyr::filter(Set == "Set22")
+sd_plage_PTB_LTBI_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set22"]]) |> 
+    dplyr::arrange(wtd_std)
+## ssGSEA
+sd_ssgsea_PTB_LTBI_sig |> 
+    dplyr::filter(Signature %in% ensemble_sig_list[["Set22"]]) |> 
+    dplyr::arrange(wtd_std)
 sd_ssgsea_PTB_LTBI |> 
     dplyr::filter(Set == "Set22")
 
+##### Figure S4A Coefficient PTB vs. Control #####
+ssgsea_PTB_Control_coef <- wd |> 
+    file.path("data/coef_output/ssgsea_PTB_Control_coef.RDS") |> 
+    readRDS()
+plage_PTB_Control_coef <- wd |> 
+    file.path("data/coef_output/plage_PTB_Control_coef.RDS") |> 
+    readRDS()
+PTB_Control_coef <- mapply(function(x, y) {
+    x <- x |> 
+        dplyr::mutate(method = "ssGSEA")
+    y <- y |> 
+        dplyr::mutate(method = "PLAGE")
+    rbind(x, y)
+}, ssgsea_PTB_Control_coef, plage_PTB_Control_coef, SIMPLIFY = FALSE)
 
-##### Figure S4B Coef PTB vs. LTBI #####
+p_PTB_Control_coef_list <- lapply(1:length(PTB_Control_coef), function(i) {
+    coef_df <- PTB_Control_coef[[i]]
+    ggplot(coef_df, aes(x = Signature, y = Coefficient)) +
+        geom_hline(yintercept = 0, linetype = "dashed", color = "red") + 
+        geom_boxplot() +
+        scale_y_continuous(limits = c(-2, 2), 
+                           breaks = seq(-2, 2, by = 1)) +
+        ggtitle(names(PTB_Control_coef)[i]) + xlab(NULL) + ylab(NULL) +
+        coord_flip() + 
+        theme_bw() +
+        facet_wrap(~method, ncol = 2)
+})
+p_PTB_Control_coef <- do.call("grid.arrange", 
+                              c(p_PTB_Control_coef_list, ncol= 6))
+# ggsave(file.path(wd, "Figures_and_tables/FigureS4_PTB_Control_coef.pdf"),
+#        p_PTB_Control_coef, device = "pdf", width = 20, height = 10)
+
+##### Figure S4B Coefficient PTB vs. LTBI #####
 ssgsea_PTB_LTBI_coef <- file.path(wd, "data/coef_output/ssgsea_PTB_LTBI_coef.RDS") |> 
     readRDS()
 plage_PTB_LTBI_coef <- file.path(wd, "data/coef_output/plage_PTB_LTBI_coef.RDS") |> 
@@ -1031,9 +1175,16 @@ plage_PTB_LTBI_all <- get_score_all(plage_PTB_LTBI_out_edit) |>
     dplyr::mutate(Method = "PLAGE")
 
 
+
 PTB_Control_all <- rbind(ssgsea_PTB_Control_all, plage_PTB_Control_all)
 PTB_Control_all$Method <- factor(PTB_Control_all$Method, 
                                  levels = c("ssGSEA", "PLAGE"))
+
+PTB_Control_all |> 
+    dplyr::group_by(Method, TBStatus, variable) |> 
+    dplyr::summarise(mean_val = mean(value)) |> 
+    dplyr::group_by(TBStatus, Method) |> 
+    dplyr::summarise(sd_val = sd(mean_val))
 p_PTB_Control <- ggplot(PTB_Control_all, 
                         aes(x = variable, y = value, color = TBStatus)) +
     geom_boxplot() +
@@ -1048,6 +1199,11 @@ p_PTB_Control <- ggplot(PTB_Control_all,
 PTB_LTBI_all <- rbind(ssgsea_PTB_LTBI_all, plage_PTB_LTBI_all)
 PTB_LTBI_all$Method <- factor(PTB_LTBI_all$Method, 
                               levels = c("ssGSEA", "PLAGE"))
+PTB_LTBI_all |> 
+    dplyr::group_by(Method, TBStatus, variable) |> 
+    dplyr::summarise(mean_val = mean(value)) |> 
+    dplyr::group_by(TBStatus, Method) |> 
+    dplyr::summarise(sd_val = sd(mean_val))
 p_PTB_LTBI <- ggplot(PTB_LTBI_all, 
                      aes(x = variable, y = value, color = TBStatus)) +
     geom_boxplot() +
@@ -1173,37 +1329,40 @@ PTB_Control_ensl_AUC_mean <- PTB_Control_ensl_AUC |>
     reshape2::dcast(Set + Method ~ Signature_type) |> 
     dplyr::mutate(Diff_AUC = Ensemble - Single, Set_new = gsub(" ", "", Set))
 
-ssgsea_PTB_Control_compare <- PTB_Control_ensl_AUC_mean |> 
-    dplyr::filter(Method == "ssGSEA") |> 
-    dplyr::inner_join(sd_ssgsea_PTB_Control_compare, by = c("Set_new" = "Signature")) |> 
-    dplyr::inner_join(p_value_ssgsea_PTB_Control, by = c("Set_new" = "Set")) |> 
-    dplyr::select(-c(Set.x,  Method.x))
-# ssgsea_PTB_Control_compare |> filter(Diff_AUC > 0, p_value < 0.05/30)
-ssgsea_PTB_Control_compare |> filter(Diff_AUC > 0, p_value < 0.05)
-ifelse(ssgsea_PTB_Control_compare |> 
-           filter(Diff_AUC > 0, p_value < 0.05/30) |> 
-           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
-    table()
-ssgsea_PTB_Control_compare |> filter(abs(Diff_AUC) <= 1e-2) |> 
-    dplyr::pull(diff_std_sd)
 plage_PTB_Control_compare <- PTB_Control_ensl_AUC_mean |> 
     dplyr::filter(Method == "PLAGE") |> 
     dplyr::inner_join(sd_plage_PTB_Control_compare, by = c("Set_new" = "Signature")) |> 
     dplyr::inner_join(p_value_plage_PTB_Control, by = c("Set_new" = "Set")) |> 
     dplyr::select(-c(Set.x,  Method.x))
-# plage_PTB_Control_compare |> filter(Diff_AUC > 0, p_value < 0.05/30)
+plage_PTB_Control_compare |> filter(Diff_AUC > 0)
 plage_PTB_Control_compare |> filter(Diff_AUC > 0, p_value < 0.05)
 ifelse(plage_PTB_Control_compare |> 
-           filter(Diff_AUC > 0, p_value < 0.05/30) |> 
+           filter(Diff_AUC > 0) |> 
+           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
+    table()
+ifelse(plage_PTB_Control_compare |> 
+           filter(Diff_AUC > 0, p_value < 0.05) |> 
            dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
     table()
 
-PTB_Control_ensl_AUC_mean |> 
-    dplyr::filter(Method == "ssGSEA", Diff > 0) |> 
-    nrow() # 18
-PTB_Control_ensl_AUC_mean |> 
-    dplyr::filter(Method == "PLAGE", Diff > 0) |> 
-    nrow() # 17
+ssgsea_PTB_Control_compare <- PTB_Control_ensl_AUC_mean |> 
+    dplyr::filter(Method == "ssGSEA") |> 
+    dplyr::inner_join(sd_ssgsea_PTB_Control_compare, by = c("Set_new" = "Signature")) |> 
+    dplyr::inner_join(p_value_ssgsea_PTB_Control, by = c("Set_new" = "Set")) |> 
+    dplyr::select(-c(Set.x,  Method.x))
+ssgsea_PTB_Control_compare |> filter(Diff_AUC > 0)
+ssgsea_PTB_Control_compare |> filter(Diff_AUC > 0, p_value < 0.05)
+ifelse(ssgsea_PTB_Control_compare |> 
+           filter(Diff_AUC > 0) |> 
+           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
+    table()
+ifelse(ssgsea_PTB_Control_compare |> 
+           filter(Diff_AUC > 0, p_value < 0.05) |> 
+           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
+    table()
+ssgsea_PTB_Control_compare |> filter(abs(Diff_AUC) <= 1e-2) |> 
+    dplyr::pull(diff_std_sd)
+
 
 # compare_single_ensl(plage_PTB_Control_ensl, "Set6", 
 #                     plage_PTB_Control_edit_AUC, "Roe_3")
@@ -1216,34 +1375,45 @@ PTB_LTBI_ensl_AUC_mean <- PTB_LTBI_ensl_AUC |>
     dplyr::mutate(Diff_AUC = Ensemble - Single, Set_new = gsub(" ", "", Set))
 
 
-ssgsea_PTB_LTBI_compare <- PTB_LTBI_ensl_AUC_mean |> 
-    dplyr::filter(Method == "ssGSEA") |> 
-    dplyr::inner_join(sd_ssgsea_PTB_LTBI_compare, by = c("Set_new" = "Signature")) |> 
-    dplyr::inner_join(p_value_ssgsea_PTB_LTBI, by = c("Set_new" = "Set")) |> 
-    dplyr::select(-c(Set.x,  Method.x))
-# ssgsea_PTB_LTBI_compare |> filter(Diff_AUC > 0, p_value < 0.05/30)
-ssgsea_PTB_LTBI_compare |> filter(Diff_AUC > 0, p_value < 0.05)
-ifelse(ssgsea_PTB_LTBI_compare |> 
-           filter(Diff_AUC > 0, p_value < 0.05/30) |> 
-           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
-    table()
-
 plage_PTB_LTBI_compare <- PTB_LTBI_ensl_AUC_mean |> 
     dplyr::filter(Method == "PLAGE") |> 
     dplyr::inner_join(sd_plage_PTB_LTBI_compare, by = c("Set_new" = "Signature")) |> 
     dplyr::inner_join(p_value_plage_PTB_LTBI, by = c("Set_new" = "Set")) |> 
     dplyr::select(-c(Set.x,  Method.x))
 # plage_PTB_LTBI_compare |> filter(Diff_AUC > 0, p_value < 0.05/30)
-plage_PTB_LTBI_compare |> filter(Diff_AUC > 0, p_value < 0.05)
 ifelse(plage_PTB_LTBI_compare |> 
-    filter(Diff_AUC > 0, p_value < 0.05/30) |> 
+           filter(Diff_AUC > 0) |> 
+           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
+    table()
+ifelse(plage_PTB_LTBI_compare |> 
+           filter(Diff_AUC < 0) |> 
+           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
+    table()
+ifelse(plage_PTB_LTBI_compare |> 
+    filter(Diff_AUC > 0, p_value < 0.05) |> 
     dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
     table()
 
-PTB_LTBI_ensl_AUC_mean |> 
-    dplyr::filter(Method == "ssGSEA", Diff > 0) |> 
-    nrow() # 29
-    
-PTB_LTBI_ensl_AUC_mean |> 
-    dplyr::filter(Method == "PLAGE", Diff > 0) |> 
-    nrow() # 6
+ssgsea_PTB_LTBI_compare <- PTB_LTBI_ensl_AUC_mean |> 
+    dplyr::filter(Method == "ssGSEA") |> 
+    dplyr::inner_join(sd_ssgsea_PTB_LTBI_compare, by = c("Set_new" = "Signature")) |> 
+    dplyr::inner_join(p_value_ssgsea_PTB_LTBI, by = c("Set_new" = "Set")) |> 
+    dplyr::select(-c(Set.x,  Method.x))
+# ssgsea_PTB_LTBI_compare |> filter(Diff_AUC > 0, p_value < 0.05/30)
+ifelse(ssgsea_PTB_LTBI_compare |> 
+           filter(Diff_AUC > 0) |> 
+           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
+    table()
+
+ifelse(ssgsea_PTB_LTBI_compare |> 
+           filter(Diff_AUC > 0, p_value < 0.05) |> 
+           dplyr::pull(diff_wtd_sd) < 0 , "small", "large") |> 
+    table()
+
+union(plage_PTB_LTBI_compare |> 
+          dplyr::filter(Diff_AUC > 0) |> 
+          dplyr::pull(Set_new),
+      ssgsea_PTB_LTBI_compare |> 
+          dplyr::filter(Diff_AUC > 0) |> 
+          dplyr::pull(Set_new))
+

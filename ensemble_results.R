@@ -171,36 +171,8 @@ get_ensemble_result_cv <- function(theObjectList,
 }
 
 #### Analysis ####
-# Remove Hoang_OD_3, GSE6112, GSE74092, and study with sample size < filter_size for PTB vs. Control
-# wd <- "~/Desktop/practice/curatedTBData_paper_results"
-PTB_Control_edit <- function(gsea_list, filter_size, out_file_path = NULL, 
-                             save_file = TRUE) {
-    gsea_list <- gsea_list[!names(gsea_list) %in% c("GSE74092", "GSE6112")]
-    study_size <- lapply(gsea_list, ncol) |>
-        unlist()
-    gsea_list <-  gsea_list[study_size >= filter_size]
-    if (save_file) {
-        saveRDS(gsea_list, out_file_path) 
-    }
-    return(gsea_list)
-}
-PTB_Control_edit(ssgsea_PTB_Control_out, 15, file.path("~/Downloads/ssgsea_PTB_Control_out_edit.RDS"))
-PTB_Control_edit(plage_PTB_Control_out, 15, file.path("~/Downloads/plage_PTB_Control_out_edit.RDS"))
 
 # Remove Hoang_OD_3, GSE6112, and study with sample size < filter_size for PTB vs. LTBI 
-PTB_LTBI_edit <- function(gsea_list, filter_size, out_file_path = NULL,
-                          save_file = TRUE) {
-    gsea_list <- gsea_list[names(gsea_list) != "GSE6112"]
-    study_size <- lapply(gsea_list, ncol) |>
-        unlist()
-    gsea_list <-  gsea_list[study_size >= filter_size]
-    if (save_file) {
-        saveRDS(gsea_list, out_file_path)
-    }
-    return(gsea_list)
-}
-PTB_LTBI_edit(ssgsea_PTB_LTBI_out, 15, file.path("~/Downloads/ssgsea_PTB_LTBI_out_edit.RDS"))
-PTB_LTBI_edit(plage_PTB_LTBI_out, 15, file.path("~/Downloads/plage_PTB_LTBI_out_edit.RDS"))
 
 sigatures_names <- c("Maertzdorf_4", "Maertzdorf_15", "LauxdaCosta_OD_3",
                      "Verhagen_10", "Jacobsen_3", "Sambarey_HIV_10",

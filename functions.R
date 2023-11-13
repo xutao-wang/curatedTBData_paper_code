@@ -651,7 +651,7 @@ extract_CI <- function(dat_combine) {
         Spec_CI_lower <- weighted.mean(dat_sub$`Spec CI lower.2.5%`, dat_sub$Size)
         Spec_CI_upper <- weighted.mean(dat_sub$`Spec CI upper.97.5%`, dat_sub$Size)
         Spec_CI <- sprintf("%.2f (%.2f - %.2f)", 
-                           weighted_sens, Spec_CI_lower, Spec_CI_upper)
+                           weighted_spec, Spec_CI_lower, Spec_CI_upper)
         
         data.frame(Signature = x, AUC = AUC_CI, 
                    Sensitivity = Sens_CI, Specificity = Spec_CI)
