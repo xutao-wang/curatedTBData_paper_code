@@ -279,33 +279,42 @@ combine_auc <- function(SE_scored_list, annotationColName, signatureColNames,
                                       
                                  LowerAUC <- stats::quantile(bootCI$AUC, prob = lower, na.rm = TRUE)
                                  UpperAUC <- stats::quantile(bootCI$AUC, prob = upper, na.rm = TRUE)
+                                 SeAUC <- sd(bootCI$AUC)
                                  
                                  LowerSens <- stats::quantile(bootCI$Sensitivity, prob = lower, na.rm = TRUE)
                                  UpperSens <- stats::quantile(bootCI$Sensitivity, prob = upper, na.rm = TRUE)
+                                 SeSens <- sd(bootCI$Sensitivity)
                                  
                                  LowerSpec <- stats::quantile(bootCI$Specificity, prob = lower, na.rm = TRUE)
                                  UpperSpec <- stats::quantile(bootCI$Specificity, prob = upper, na.rm = TRUE)
+                                 SeSpec <- sd(bootCI$Specificity)
                                  
                                  dat <- data.frame(i, round(pvals, 4),
                                                    round(neg10log, 4), 
                                                    round(out$AUC, 4),
+                                                   round(SeAUC, 4),
                                                    round(LowerAUC, 4),
                                                    round(UpperAUC, 4),
                                                    round(out$Sensitivity, 4),
+                                                   round(SeSens, 4),
                                                    round(LowerSens, 4),
                                                    round(UpperSens, 4),
                                                    round(out$Specificity, 4),
+                                                   round(SeSpec, 4),
                                                    round(LowerSpec, 4),
                                                    round(UpperSpec, 4))
                                  colnames(dat) <- c("Signature", "P.value",
                                                     "neg10xP.value", 
                                                     "AUC",
+                                                    "SE_AUC",
                                                     paste0("AUC CI lower.", lower * 100, "%"),
                                                     paste0("AUC CI upper.", upper * 100, "%"),
                                                     "Sensitivity",
+                                                    "SE_Sens",
                                                     paste0("Sens CI lower.", lower * 100, "%"),
                                                     paste0("Sens CI upper.", upper * 100, "%"),
                                                     "Specificity",
+                                                    "SE_Spec",
                                                     paste0("Spec CI lower.", lower * 100, "%"),
                                                     paste0("Spec CI upper.", upper * 100, "%"))
                                  dat
@@ -1002,3 +1011,89 @@ get_results_for_ridge <- function(df_ensl, df_single, set_name, threshold = 0.8,
 #     dplyr::mutate(Diff_wtd_mean = AUC_max - AUC_wtd_mean) |> 
 #     mutate(Diff_mean_median = AUC_mean - AUC_median) |> 
 #     mutate(Diff_mean_wtd_mean = AUC_mean - AUC_wtd_mean)
+
+signatureBoxplot_edit <- function (inputData, annotationData, signatureColNames, annotationColName, 
+          name = "Signatures", scale = FALSE, violinPlot = FALSE, includePoints = TRUE, 
+          notch = FALSE, rotateLabels = FALSE, nrow = NULL, ncol = NULL, 
+          fill_colors = NULL) 
+{
+    if (methods::is(inputData, "SummarizedExperiment")) {
+        if (any(duplicated(signatureColNames))) {
+            stop("Duplicate signature column name is not supported.")
+        }
+        if (!all(signatureColNames %in% colnames(SummarizedExperiment::colData(inputData)))) {
+            stop("Signature column name not found in inputData.")
+        }
+        if (!all(annotationColName %in% colnames(SummarizedExperiment::colData(inputData)))) {
+            stop("Annotation column name not found in inputData.")
+        }
+        annotationData <- data.frame(SummarizedExperiment::colData(inputData)[, 
+                                                                              annotationColName, drop = FALSE])
+        inputData <- data.frame(SummarizedExperiment::colData(inputData)[, 
+                                                                         signatureColNames, drop = FALSE])
+    }
+    else {
+        if (ncol(annotationData) != 1) {
+            stop("annotationData must have only one column.")
+        }
+        annotationColName <- colnames(annotationData)
+    }
+    if (length(annotationColName) != 1) {
+        stop("You must specify a single annotation column name to color boxplots by.")
+    }
+    if (!is.factor(annotationData[, 1])) {
+        annotationData[, 1] <- as.factor(annotationData[, 1])
+    }
+    n <- length(levels(annotationData[, 1]))
+    if (n > 9) {
+        stop("Too many levels in the annotation data. The boxplot can contain a maximum of 9 levels")
+    }
+    if (nrow(annotationData) == nrow(inputData)) {
+        if (!all(rownames(annotationData) == rownames(inputData))) {
+            stop("Annotation data and signature data does not match.")
+        }
+    }
+    else if (nrow(annotationData) == ncol(inputData)) {
+        if (!all(rownames(annotationData) == colnames(inputData))) {
+            stop("Annotation data and signature data does not match.")
+        }
+        inputData <- t(inputData)
+    }
+    else {
+        stop("Annotation data and signature data does not match.")
+    }
+    pathwaydata <- t(inputData)
+    if (scale) {
+        pathwaydata <- t(scale(t(pathwaydata)))
+    }
+    boxplotdf <- data.frame(t(pathwaydata), Group = annotationData[, 
+                                                                   1])
+    boxplotdfm <- reshape2::melt(boxplotdf, value.name = "Score", 
+                                 variable.name = "Signature", id.vars = "Group")
+    theplot <- ggplot2::ggplot(boxplotdfm, ggplot2::aes_string("Group", 
+                                                               "Score")) + ggplot2::facet_wrap(~Signature, scales = "free_y",
+                                                                                               nrow = nrow, ncol = ncol)
+    if (violinPlot) {
+        theplot <- theplot + ggplot2::geom_violin(ggplot2::aes_string(fill = "Group")) + 
+            ggplot2::theme_classic()
+    }
+    else {
+        theplot <- theplot + ggplot2::geom_boxplot(outlier.shape = NA, 
+                                                   ggplot2::aes_string(fill = "Group"), notch = notch) + 
+            ggplot2::theme_classic()
+    }
+    if (includePoints) {
+        theplot <- theplot + ggplot2::geom_point(position = ggplot2::position_jitter(width = 0.1))
+    }
+    if (rotateLabels) {
+        theplot <- theplot + ggplot2::theme(axis.text.x = ggplot2::element_text(angle = 90, 
+                                                                                hjust = 1))
+    }
+    if (is.null(fill_colors)) {
+        if (n < 3) 
+            n <- 3
+        fill_colors <- RColorBrewer::brewer.pal(n, "Set1")
+    }
+    return(theplot + ggplot2::scale_fill_manual(values = fill_colors) + 
+               ggplot2::ggtitle(name))
+}

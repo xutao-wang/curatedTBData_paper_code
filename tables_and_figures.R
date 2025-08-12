@@ -34,7 +34,7 @@ sigatures_names <- c("Anderson_42", "Anderson_OD_51", "Berry_393", "Berry_OD_86"
                      "Gliddon_OD_3", "Gliddon_OD_4", "Gong_OD_4", "Heycken_FAIL_22",
                      "Hoang_OD_13", "Hoang_OD_20", "Hoang_OD_3", "Huang_OD_13",
                      "Jacobsen_3", "Jenum_8", "Kaforou_27", "Kaforou_OD_44",
-                     "Kaforou_OD_53", "Kaul_3", "Kulkarni_HIV_2", "Kwan_186",
+                     "Kaforou_OD_53", "Kaul_3", "Kwan_186",
                      "LauxdaCosta_OD_3", "Lee_4", "Leong_24", "Leong_RISK_29",
                      "Long_RES_10", "Maertzdorf_15", "Maertzdorf_4", "Maertzdorf_OD_100",
                      "Natarajan_7", "PennNich_RISK_6", "Qian_OD_17", "Rajan_HIV_5",
@@ -63,6 +63,7 @@ signatures_list <- signatures_list[order(sigatures_names)]
 #     plyr::compact()
 # saveRDS(ssgsea_PTB_Control_out, file.path(wd, "data/ssgsea_PTB_Control_out.RDS"))
 
+# ssgsea_PTB_Control_out <- readRDS(file.path(wd, "data/ssgsea_PTB_Control_out.RDS"))
 # ssgsea_PTB_Control_out_combine <- combine_auc(ssgsea_PTB_Control_out,
 #                                               annotationColName = "TBStatus",
 #                                               signatureColNames = names(signatures_list),
@@ -177,17 +178,17 @@ plage_PTB_LTBI_out_combine <- file.path(wd, "data/plage_PTB_LTBI_out_combine.RDS
 data("DataSummary")
 study_summary_sub <- DataSummary |> 
     dplyr::select(-Notes, -GeneralType)
-write.table(study_summary_sub, quote = FALSE, row.names = FALSE, sep = " & ",
-            file = "~/Desktop/practice/curatedTBData_paper_results/Figures_and_tables/study_summary_sub.txt") 
+# write.table(study_summary_sub, quote = FALSE, row.names = FALSE, sep = " & ",
+#             file = "~/Desktop/practice/curatedTBData_paper_results/Figures_and_tables/study_summary_sub.txt") 
                                    
 # Run the following command in terminal (Add '\\\hline' by the end of each line)
 # awk '{print $0, " \\\\\\\hline"}' study_summary_sub.txt > study_summary_sub_for_latex.txt
 
 #### Table S2 Clinical annotation ####
 clincial_annotation <- readxl::read_excel("Desktop/practice/curatedTBData_paper_results/clinicalDataAnnotation.xlsx")
-write.table(clincial_annotation, 
-            quote = FALSE, row.names = FALSE, sep = " & ",
-            file = file.path(out_file_path, "clincial_annotation.txt")) 
+# write.table(clincial_annotation, 
+#             quote = FALSE, row.names = FALSE, sep = " & ",
+#             file = file.path(out_file_path, "clincial_annotation.txt")) 
 # Run the following command in terminal (Add '\\\hline' by the end of each line)
 # awk '{print $0, " \\\\\\\hline"}' clincial_annotation.txt > clincial_annotation_for_latex.txt
 #### Extract AUC, sens, spec####
@@ -299,6 +300,142 @@ wilcox.test(ssgsea_PTB_Control_AUCs, ssgsea_PTB_LTBI_AUCs, paired = TRUE)
 wilcox.test(plage_PTB_Control_AUCs, plage_PTB_LTBI_AUCs, paired = TRUE)
 wilcox.test(ssgsea_PTB_Control_AUCs, plage_PTB_Control_AUCs, paired = TRUE)
 wilcox.test(ssgsea_PTB_LTBI_AUCs, plage_PTB_LTBI_AUCs, paired = TRUE)
+
+#### New analysis 20250722 in response to editors ####
+extrac_CI_edit <- function(dat_combine, FUN) {
+    signature_names <- unique(dat_combine$Signature)
+    out <- lapply(signature_names, function(x) {
+        dat_sub <- dat_combine |> 
+            dplyr::filter(Signature == x)
+        if (FUN == 'weighted.mean') {
+            re_AUC <- weighted.mean(dat_sub$AUC, dat_sub$Size)
+            AUC_CI_lower <- weighted.mean(dat_sub$`AUC CI lower.2.5%`, dat_sub$Size)
+            AUC_CI_upper <- weighted.mean(dat_sub$`AUC CI upper.97.5%`, dat_sub$Size)
+            
+            re_sens <- weighted.mean(dat_sub$Sensitivity, dat_sub$Size)
+            Sens_CI_lower <- weighted.mean(dat_sub$`Sens CI lower.2.5%`, dat_sub$Size)
+            Sens_CI_upper <- weighted.mean(dat_sub$`Sens CI upper.97.5%`, dat_sub$Size)
+            
+            re_spec <- weighted.mean(dat_sub$Specificity, dat_sub$Size)
+            Spec_CI_lower <- weighted.mean(dat_sub$`Spec CI lower.2.5%`, dat_sub$Size)
+            Spec_CI_upper <- weighted.mean(dat_sub$`Spec CI upper.97.5%`, dat_sub$Size)
+        } else if (FUN == 'mean') {
+            re_AUC <- mean(dat_sub$AUC)
+            AUC_CI_lower <- mean(dat_sub$`AUC CI lower.2.5%`)
+            AUC_CI_upper <- mean(dat_sub$`AUC CI upper.97.5%`)
+            
+            re_sens <- mean(dat_sub$Sensitivity)
+            Sens_CI_lower <- mean(dat_sub$`Sens CI lower.2.5%`)
+            Sens_CI_upper <- mean(dat_sub$`Sens CI upper.97.5%`)
+            
+            re_spec <- mean(dat_sub$Specificity)
+            Spec_CI_lower <- mean(dat_sub$`Spec CI lower.2.5%`)
+            Spec_CI_upper <- mean(dat_sub$`Spec CI upper.97.5%`)
+        }
+        AUC_CI <- sprintf("%.2f (%.2f - %.2f)", 
+                          re_AUC, AUC_CI_lower, AUC_CI_upper)
+        Sens_CI <- sprintf("%.2f (%.2f - %.2f)", 
+                           re_sens, Sens_CI_lower, Sens_CI_upper)
+        
+        Spec_CI <- sprintf("%.2f (%.2f - %.2f)", 
+                           re_spec, Spec_CI_lower, Spec_CI_upper)
+        
+        data.frame(Signature = x, AUC = AUC_CI, 
+                   Sensitivity = Sens_CI, Specificity = Spec_CI)
+    }) |> 
+        dplyr::bind_rows()
+    return(out)
+}
+
+library(metafor)
+get_meta_random_effect <- function(df_out_combine, sigs, col_name) {
+    df_out <- lapply(sigs, function(sig) {
+        df_random <- df_out_combine |> 
+            dplyr::filter(Signature %in% sig)
+        df_random$SE <- (df_random$`AUC CI upper.97.5%` - df_random$`AUC CI lower.2.5%`) / (2 * 1.96)
+        # df_random <- df_random |> dplyr::filter(!SE==0)
+        res <- rma(yi = AUC, sei = df_random[,col_name], data = df_random, method = "REML")
+        data.frame(Signature = sig, AUC = res$beta[,1], 
+                   lower = res$ci.lb, upper = res$ci.ub) |> 
+            dplyr::mutate(random_effect_AUC = sprintf("%.2f (%.2f - %.2f)", 
+                                  AUC, lower, upper))
+    }) |> 
+        dplyr::bind_rows()
+    return(df_out)
+}
+
+# PTB vs. Control
+ssgsea_PTB_Control_CI_hi <- ssgsea_PTB_Control_CI |> 
+    dplyr::slice(grep("^0.9", ssgsea_PTB_Control_CI$AUC)) 
+
+plage_PTB_Control_CI_hi <- plage_PTB_Control_CI |> 
+    dplyr::slice(grep("^0.9", plage_PTB_Control_CI$AUC)) 
+
+PTB_Control_sig_hi <- intersect(ssgsea_PTB_Control_CI_hi$Signature, 
+                               plage_PTB_Control_CI_hi$Signature)
+PTB_Control_sig_hi <- PTB_Control_sig_hi[PTB_Control_sig_hi!='Hoang_OD_3']
+# Results from bootstrap SE is similar using the formula in get_meta_random_effect function
+# ssgsea_PTB_Control_SE_combine <- combine_auc(ssgsea_PTB_Control_out,
+#                                               annotationColName = "TBStatus",
+#                                               signatureColNames = PTB_Control_sig_hi,
+#                                               num.boot = 1000, percent = 0.95)
+
+ssgsea_PTB_Control_RE <- get_meta_random_effect(ssgsea_PTB_Control_out_combine, 
+                                                PTB_Control_sig_hi, col_name = 'SE')
+ssgsea_PTB_Control_compare <- ssgsea_PTB_Control_CI |> 
+    dplyr::filter(Signature %in% PTB_Control_sig_hi) |> 
+    dplyr::mutate(weighted_mean_AUC_ssgsea = AUC) |> 
+    dplyr::select(Signature, weighted_mean_AUC_ssgsea) |> 
+    dplyr::inner_join(ssgsea_PTB_Control_RE |> 
+                          dplyr::select(Signature, random_effect_AUC)) |> 
+    dplyr::rename(random_effect_AUC_ssgsea = random_effect_AUC)
+
+plage_PTB_Control_RE <- get_meta_random_effect(plage_PTB_Control_out_combine, 
+                                                PTB_Control_sig_hi, col_name = 'SE')
+
+plage_PTB_Control_compare <- plage_PTB_Control_CI |> 
+    dplyr::filter(Signature %in% PTB_Control_sig_hi) |> 
+    dplyr::mutate(weighted_mean_AUC_plage = AUC) |> 
+    dplyr::select(Signature, weighted_mean_AUC_plage) |> 
+    dplyr::inner_join(plage_PTB_Control_RE |> 
+                          dplyr::select(Signature, random_effect_AUC)) |> 
+    dplyr::rename(random_effect_AUC_plage = random_effect_AUC)
+
+PTB_Control_compare <- ssgsea_PTB_Control_compare |> 
+    dplyr::inner_join(plage_PTB_Control_compare)
+
+# PTB vs. LTBI
+ssgsea_PTB_LTBI_CI_hi <- ssgsea_PTB_LTBI_CI |> 
+    dplyr::slice(grep("^0.9", ssgsea_PTB_LTBI_CI$AUC))
+
+plage_PTB_LTBI_CI_hi <- plage_PTB_LTBI_CI |> 
+    dplyr::slice(grep("^0.9", plage_PTB_LTBI_CI$AUC))
+
+PTB_LTBI_sig_hi <- intersect(ssgsea_PTB_LTBI_CI_hi$Signature, 
+                             plage_PTB_LTBI_CI_hi$Signature)
+ssgsea_PTB_LTBI_RE <- get_meta_random_effect(ssgsea_PTB_LTBI_out_combine, 
+                                                PTB_LTBI_sig_hi, col_name = 'SE')
+ssgsea_PTB_LTBI_compare <- ssgsea_PTB_LTBI_CI |> 
+    dplyr::filter(Signature %in% PTB_LTBI_sig_hi) |> 
+    dplyr::mutate(weighted_mean_AUC_ssgsea = AUC) |> 
+    dplyr::select(Signature, weighted_mean_AUC_ssgsea) |> 
+    dplyr::inner_join(ssgsea_PTB_LTBI_RE |> 
+                          dplyr::select(Signature, random_effect_AUC)) |> 
+    dplyr::rename(random_effect_AUC_ssgsea = random_effect_AUC)
+
+plage_PTB_LTBI_RE <- get_meta_random_effect(plage_PTB_LTBI_out_combine, 
+                                             PTB_LTBI_sig_hi, col_name = 'SE')
+
+plage_PTB_LTBI_compare <- plage_PTB_LTBI_CI |> 
+    dplyr::filter(Signature %in% PTB_LTBI_sig_hi) |> 
+    dplyr::mutate(weighted_mean_AUC_plage = AUC) |> 
+    dplyr::select(Signature, weighted_mean_AUC_plage) |> 
+    dplyr::inner_join(plage_PTB_LTBI_RE |> 
+                          dplyr::select(Signature, random_effect_AUC)) |> 
+    dplyr::rename(random_effect_AUC_plage = random_effect_AUC)
+
+PTB_LTBI_compare <- ssgsea_PTB_LTBI_compare |> 
+    dplyr::inner_join(plage_PTB_LTBI_compare)
 
 #### Table: Weighted Sensitivity (95% CI) for PTB vs. Control and PTB vs. LTBI ####
 ssgsea_PTB_Control_CI_sens <- ssgsea_PTB_Control_CI |> 
@@ -429,6 +566,11 @@ venn_input_0.9 <-list('PTB vs. Control (ssGSEA)' = na.omit(out$Signature[out$ssg
                   'PTB vs. Control (PLAGE)' = na.omit(out$Signature[out$plage_PTB_Control >= 0.9]),
                   'PTB vs. LTBI (ssGSEA)' = na.omit(out$Signature[out$ssgsea_PTB_LTBI >= 0.9]),
                   'PTB vs. LTBI (PLAGE)' = na.omit(out$Signature[out$plage_PTB_LTBI >= 0.9]))
+
+venn_input_low <-list('PTB vs. Control (ssGSEA)' = na.omit(out$Signature[out$ssgsea_PTB_Control < 0.8]),
+                      'PTB vs. Control (PLAGE)' = na.omit(out$Signature[out$plage_PTB_Control < 0.8]),
+                      'PTB vs. LTBI (ssGSEA)' = na.omit(out$Signature[out$ssgsea_PTB_LTBI < 0.8]),
+                      'PTB vs. LTBI (PLAGE)' = na.omit(out$Signature[out$plage_PTB_LTBI < 0.8]))
 
 # create venn diagram and display all the sets
 figure2A_0.8 <- ggvenn::ggvenn(venn_input_0.8, show_percentage= T, show_elements = FALSE, set_name_size = 4,
@@ -687,8 +829,8 @@ p_ensl_sub_PTB_Control <- AUC_final_sub |>
     theme_bw() +
     theme(axis.title.x = element_blank(),
           axis.text.x = element_text(size = 8, face = "bold"))
-ggsave(file.path(wd, "Figures_and_tables/p_ensl_sub_PTB_Control.pdf"),
-       p_ensl_sub_PTB_Control, device = "pdf", width = 10, height = 3)
+# ggsave(file.path(wd, "Figures_and_tables/p_ensl_sub_PTB_Control.pdf"),
+#        p_ensl_sub_PTB_Control, device = "pdf", width = 10, height = 3)
 
 p_ensl_sub_PTB_LTBI <- AUC_final_sub |> 
     dplyr::filter(Comparison == "PTB vs. LTBI") |> 
@@ -703,8 +845,8 @@ p_ensl_sub_PTB_LTBI <- AUC_final_sub |>
     theme(axis.title.x = element_blank(),
           axis.text.x = element_text(size = 8, face = "bold"))
 
-ggsave(file.path(wd, "Figures_and_tables/p_ensl_sub_PTB_LTBI.pdf"),
-       p_ensl_sub_PTB_LTBI, device = "pdf", width = 10, height = 3)
+# ggsave(file.path(wd, "Figures_and_tables/p_ensl_sub_PTB_LTBI.pdf"),
+#        p_ensl_sub_PTB_LTBI, device = "pdf", width = 10, height = 3)
 ##### p values for viollin plot comparisons #####
 compare_single_ensl <- function(df_ensl, set_name, df_single, single_name) {
     AUC_set_ensl <- df_ensl |> 
@@ -1416,4 +1558,398 @@ union(plage_PTB_LTBI_compare |>
       ssgsea_PTB_LTBI_compare |> 
           dplyr::filter(Diff_AUC > 0) |> 
           dplyr::pull(Set_new))
+
+#### Additional analysis for HIV positive ####
+# # Find studies with HIV patients
+# # All patients are HIV co-infected
+# geo_HIV_all <- c("GSE69581", "GSE83892", "GSE50834", "GSE107104")
+# # Some patients are HIV co-infected
+# geo_HIV_some <- c("GSE37250", "GSE39939", "GSE39940")
+
+# geo_HIV <- c(geo_HIV_all, geo_HIV_some)
+# objects_list <- curatedTBData(study_name = geo_HIV, dry.run = FALSE)
+objects_list_HIV <- lapply(geo_HIV_some, function(x) {
+    obj <- objects_list[[x]]
+    obj[, obj$HIVStatus == "Positive"]
+    # obj[, (obj$HIVStatus == "Positive" & obj$TBStatus == "PTB") |
+    #         (obj$HIVStatus == "Negative" & obj$TBStatus == "LTBI")]
+})
+names(objects_list_HIV) <- geo_HIV
+objects_list_HIV_update <- lapply(objects_list_HIV, function(x) {
+    dat <- x[["assay_curated"]]
+    row_names <- row.names(dat) |>
+        update_genenames()
+    row.names(dat) <- row_names
+    SummarizedExperiment(assays = list(dat), colData = colData(x))
+})
+##### ssGSEA PTB vs. Control #####
+# ssgsea_PTB_Control_out_HIV <- lapply(objects_list_HIV_update, function(x) {
+#     out <- subset_curatedTBData(x, annotationColName = "TBStatus",
+#                                 annotationCondition = c("PTB", "Control"))
+#     if (is.null(out)) {
+#         return(NULL)
+#     }
+#     runTBsigProfiler(input = out, useAssay = 1, signatures = signatures_list,
+#                      algorithm = "ssGSEA", update_genes = FALSE,
+#                      combineSigAndAlgorithm = FALSE)
+# }) |>
+#     plyr::compact()
+# saveRDS(ssgsea_PTB_Control_out_HIV,
+#         file.path(wd, "data/ssgsea_PTB_Control_out_HIV.RDS"))
+# 
+# ssgsea_PTB_Control_out_combine_HIV <- combine_auc(ssgsea_PTB_Control_out_HIV,
+#                                                   annotationColName = "TBStatus",
+#                                                   signatureColNames = names(signatures_list),
+#                                                   num.boot = 1000, percent = 0.95)
+# saveRDS(ssgsea_PTB_Control_out_combine_HIV,
+#         file.path(wd, "data/ssgsea_PTB_Control_out_combine_HIV.RDS"))
+
+ssgsea_PTB_Control_out_HIV <- file.path(wd, "data/ssgsea_PTB_Control_out_HIV.RDS") |> 
+    readRDS()
+study_PTB_Control_HIV <- lapply(1:length(ssgsea_PTB_Control_out_HIV), function(i) {
+    sobject <- ssgsea_PTB_Control_out_HIV[[i]]
+    sutdy_name <- gsub("_edit", "", names(ssgsea_PTB_Control_out_HIV)[i])
+    data.frame(Study = sutdy_name, Size = ncol(sobject))
+}) |> 
+    dplyr::bind_rows()
+
+ssgsea_PTB_Control_out_combine_HIV <- file.path(wd, "data/ssgsea_PTB_Control_out_combine_HIV.RDS") |> 
+    readRDS() |> 
+    dplyr::mutate(Study = gsub("_edit", "", Study)) |> 
+    dplyr::inner_join(study_PTB_Control_HIV, "Study")
+
+# ssgsea_PTB_Control_CI_HIV <- extract_CI(ssgsea_PTB_Control_out_combine_HIV)
+# ssgsea_PTB_Control_CI_sub_HIV <- ssgsea_PTB_Control_CI_HIV |> 
+#     dplyr::mutate(ssgsea_PTB_Control = AUC) |> 
+#     dplyr::select(Signature, ssgsea_PTB_Control)
+
+##### PLAGE PTB vs. Control #####
+# plage_PTB_Control_out_HIV <- lapply(objects_list_HIV_update, function(x) {
+#     out <- subset_curatedTBData(x, annotationColName = "TBStatus",
+#                                 annotationCondition = c("PTB", "Control"))
+#     if (is.null(out)) {
+#         return(NULL)
+#     }
+#     runTBsigProfiler(input = out, useAssay = 1, signatures = signatures_list,
+#                      algorithm = "PLAGE", update_genes = FALSE,
+#                      combineSigAndAlgorithm = FALSE)
+# }) |>
+#     plyr::compact()
+# saveRDS(plage_PTB_Control_out_HIV,
+#         file.path(wd, "data/plage_PTB_Control_out_HIV.RDS"))
+# plage_PTB_Control_out_combine_HIV <- combine_auc(plage_PTB_Control_out_HIV,
+#                                                   annotationColName = "TBStatus",
+#                                                   signatureColNames = names(signatures_list),
+#                                                   num.boot = 1000, percent = 0.95)
+# saveRDS(plage_PTB_Control_out_combine_HIV,
+#         file.path(wd, "data/plage_PTB_Control_out_combine_HIV.RDS"))
+
+plage_PTB_Control_out_HIV <- file.path(wd, "data/plage_PTB_Control_out_HIV.RDS") |> 
+    readRDS()
+plage_PTB_Control_out_combine_HIV <- file.path(wd, "data/plage_PTB_Control_out_combine_HIV.RDS") |> 
+    readRDS() |> 
+    dplyr::mutate(Study = gsub("_edit", "", Study)) |> 
+    dplyr::inner_join(study_PTB_Control_HIV, "Study")
+
+# plage_PTB_Control_CI_HIV <- extract_CI(plage_PTB_Control_out_combine_HIV)
+# plage_PTB_Control_CI_sub_HIV <- plage_PTB_Control_CI_HIV |> 
+#     dplyr::mutate(plage_PTB_Control = AUC) |> 
+#     dplyr::select(Signature, plage_PTB_Control)
+##### ssGSEA PTB vs. LTBI #####
+# ssgsea_PTB_LTBI_out_HIV <- lapply(objects_list_HIV_update, function(x) {
+#     out <- subset_curatedTBData(x, annotationColName = "TBStatus",
+#                                 annotationCondition = c("PTB", "LTBI"))
+#     if (is.null(out)) {
+#         return(NULL)
+#     }
+#     runTBsigProfiler(input = out, useAssay = 1, signatures = signatures_list,
+#                      algorithm = "ssGSEA", update_genes = FALSE,
+#                      combineSigAndAlgorithm = FALSE)
+# }) |>
+#     plyr::compact()
+# saveRDS(ssgsea_PTB_LTBI_out_HIV,
+#         file.path(wd, "data/ssgsea_PTB_LTBI_out_HIV.RDS"))
+
+# ssgsea_PTB_LTBI_out_combine_HIV <- combine_auc(ssgsea_PTB_LTBI_out_HIV,
+#                                                   annotationColName = "TBStatus",
+#                                                   signatureColNames = names(signatures_list),
+#                                                   num.boot = 1000, percent = 0.95)
+# saveRDS(ssgsea_PTB_LTBI_out_combine_HIV,
+#         file.path(wd, "data/ssgsea_PTB_LTBI_out_combine_HIV.RDS"))
+
+ssgsea_PTB_LTBI_out_HIV <- file.path(wd, "data/ssgsea_PTB_LTBI_out_HIV.RDS") |> 
+    readRDS()
+study_PTB_LTBI_HIV <- lapply(1:length(ssgsea_PTB_LTBI_out_HIV), function(i) {
+    sobject <- ssgsea_PTB_LTBI_out_HIV[[i]]
+    sutdy_name <- gsub("_edit", "", names(ssgsea_PTB_LTBI_out_HIV)[i])
+    data.frame(Study = sutdy_name, Size = ncol(sobject))
+}) |> 
+    dplyr::bind_rows()
+
+ssgsea_PTB_LTBI_out_combine_HIV <- file.path(wd, "data/ssgsea_PTB_LTBI_out_combine_HIV.RDS") |> 
+    readRDS() |> 
+    dplyr::mutate(Study = gsub("_edit", "", Study)) |> 
+    dplyr::inner_join(study_PTB_LTBI_HIV, "Study")
+
+ssgsea_PTB_LTBI_CI_HIV <- extract_CI(ssgsea_PTB_LTBI_out_combine_HIV)
+ssgsea_PTB_LTBI_CI_sub_HIV <- ssgsea_PTB_LTBI_CI_HIV |> 
+    dplyr::mutate(ssgsea_PTB_LTBI = AUC) |> 
+    dplyr::select(Signature, ssgsea_PTB_LTBI)
+
+##### PLAGE PTB vs. LTBI #####
+plage_PTB_LTBI_out_HIV <- lapply(objects_list_HIV_update, function(x) {
+    out <- subset_curatedTBData(x, annotationColName = "TBStatus",
+                                annotationCondition = c("PTB", "LTBI"))
+    if (is.null(out)) {
+        return(NULL)
+    }
+    runTBsigProfiler(input = out, useAssay = 1, signatures = signatures_list,
+                     algorithm = "PLAGE", update_genes = FALSE,
+                     combineSigAndAlgorithm = FALSE)
+}) |>
+    plyr::compact()
+saveRDS(plage_PTB_LTBI_out_HIV,
+        file.path(wd, "data/plage_PTB_LTBI_out_HIV.RDS"))
+
+plage_PTB_LTBI_out_combine_HIV <- combine_auc(plage_PTB_LTBI_out_HIV,
+                                               annotationColName = "TBStatus",
+                                               signatureColNames = names(signatures_list),
+                                               num.boot = 1000, percent = 0.95)
+saveRDS(plage_PTB_LTBI_out_combine_HIV,
+        file.path(wd, "data/plage_PTB_LTBI_out_combine_HIV.RDS"))
+
+plage_PTB_LTBI_out_HIV <- file.path(wd, "data/plage_PTB_LTBI_out_HIV.RDS") |> 
+    readRDS()
+study_PTB_LTBI_HIV <- lapply(1:length(plage_PTB_LTBI_out_HIV), function(i) {
+    sobject <- plage_PTB_LTBI_out_HIV[[i]]
+    sutdy_name <- gsub("_edit", "", names(plage_PTB_LTBI_out_HIV)[i])
+    data.frame(Study = sutdy_name, Size = ncol(sobject))
+}) |> 
+    dplyr::bind_rows()
+
+plage_PTB_LTBI_out_combine_HIV <- file.path(wd, "data/plage_PTB_LTBI_out_combine_HIV.RDS") |> 
+    readRDS() |> 
+    dplyr::mutate(Study = gsub("_edit", "", Study)) |> 
+    dplyr::inner_join(study_PTB_LTBI_HIV, "Study")
+
+
+plage_PTB_LTBI_CI_HIV <- extract_CI(plage_PTB_LTBI_out_combine_HIV)
+plage_PTB_LTBI_CI_sub_HIV <- plage_PTB_LTBI_CI_HIV |> 
+    dplyr::mutate(plage_PTB_LTBI = AUC) |> 
+    dplyr::select(Signature, plage_PTB_LTBI)
+
+##### Run analysis #####
+# selected_gene_sets <- c("Gliddon_HIV_3", "Chen_HIV_4", "Rajan_HIV_5",
+#                    "Sambarey_HIV_10", "Dawany_HIV_251")
+# selected_gene_sets <- c("Blankley_5", "Kaforou_27", "Kaul_3", "Tabone_RES_27",
+#                         "Dawany_HIV_251", "Lee_4", "Thompson_FAIL_13", "Verhagen_10", "Walter_PNA_47")
+
+# ssgsea_PTB_Control_HIV <- ssgsea_PTB_Control_CI |> 
+#     dplyr::filter(Signature %in% selected_gene_sets) |> 
+#     dplyr::inner_join(ssgsea_PTB_Control_CI_HIV |> 
+#                           dplyr::filter(Signature %in% selected_gene_sets), 
+#                       by = "Signature")
+# index_match <- match(selected_gene_sets, ssgsea_PTB_Control_HIV$Signature)
+# 
+# write.table(ssgsea_PTB_Control_HIV[index_match, ], 
+#             quote = FALSE, row.names = FALSE, sep = " & ",
+#             file = file.path(wd, "data/ssgsea_PTB_Control_HIV.txt")) 
+
+# plage_PTB_Control_HIV <- plage_PTB_Control_CI |> 
+#     dplyr::filter(Signature %in% selected_gene_sets) |> 
+#     dplyr::inner_join(plage_PTB_Control_CI_HIV |> 
+#                           dplyr::filter(Signature %in% selected_gene_sets), 
+#                       by = "Signature")
+# write.table(plage_PTB_Control_HIV[index_match, ], 
+#             quote = FALSE, row.names = FALSE, sep = " & ",
+#             file = file.path(wd, "data/plage_PTB_Control_HIV.txt")) 
+
+ssgsea_PTB_Control_HIV_all <- ssgsea_PTB_Control_out_combine_HIV |> 
+    dplyr::mutate(Group = "HIV subjects") |> 
+    rbind(ssgsea_PTB_Control_out_combine |> 
+              dplyr::mutate(Group = "Non-HIV subjects")) |>
+    dplyr::mutate(Method = "ssGSEA")
+plage_PTB_Control_HIV_all <- plage_PTB_Control_out_combine_HIV |> 
+    dplyr::mutate(Group = "HIV subjects") |> 
+    rbind(plage_PTB_Control_out_combine |> 
+              dplyr::mutate(Group = "Non-HIV subjects")) |>
+    dplyr::mutate(Method = "PLAGE")
+
+#    dplyr::filter(Signature %in% selected_gene_sets) |> 
+p_PTB_Control_HIV <- rbind(ssgsea_PTB_Control_HIV_all, plage_PTB_Control_HIV_all) |> 
+    ggplot(aes(x = AUC, y = Signature, fill = Group)) +
+        geom_density_ridges(alpha=0.6) +
+        theme_ridges() + ylab(NULL) +
+        facet_wrap(Method ~. ) +
+        theme(legend.title = element_blank()
+        )
+library(ggridges)
+library(ggplot2)
+ggsave(p_PTB_Control_HIV, 
+       file = file.path(wd, "Figures_and_tables/PTB_Control_HIV.pdf"),
+       device = "pdf", height = 18, width = 8)
+# ssgsea_PTB_LTBI_HIV <- ssgsea_PTB_LTBI_CI |> 
+#     dplyr::filter(Signature %in% selected_gene_sets) |> 
+#     dplyr::inner_join(ssgsea_PTB_LTBI_CI_HIV |> 
+#                           dplyr::filter(Signature %in% selected_gene_sets), 
+#                       by = "Signature")
+# write.table(ssgsea_PTB_LTBI_HIV[index_match, ], 
+#             quote = FALSE, row.names = FALSE, sep = " & ",
+#             file = file.path(wd, "data/ssgsea_PTB_LTBI_HIV.txt")) 
+# 
+# plage_PTB_LTBI_HIV <- plage_PTB_LTBI_CI |> 
+#     dplyr::filter(Signature %in% selected_gene_sets) |> 
+#     dplyr::inner_join(plage_PTB_LTBI_CI_HIV |> 
+#                           dplyr::filter(Signature %in% selected_gene_sets), 
+#                       by = "Signature")
+# write.table(plage_PTB_LTBI_HIV[index_match, ], 
+#             quote = FALSE, row.names = FALSE, sep = " & ",
+#             file = file.path(wd, "data/plage_PTB_LTBI_HIV.txt"))
+
+#### Additional analysis for diabetes ####
+# objects_list_dia <- lapply(objects_list, function(x) {
+#     if ("DiabetesStatus" %in% colnames(colData(x))) {
+#         x_sub <- x[, x$DiabetesStatus == "Positive"]
+#         if (ncol(x_sub[["assay_curated"]]) > 0) {
+#             return(x_sub)
+#         }
+#     } 
+#     return(NULL)
+# }) |> 
+#     plyr::compact()
+objects_list_dia <- curatedTBData(c("GSEBruno", "GSE73408"), dry.run = FALSE)
+GSEBruno <- SummarizedExperiment(list(objects_list_dia$GSEBruno[["assay_curated"]]),
+                                 colData = colData(objects_list_dia$GSEBruno))
+
+pp <- paste0(GSEBruno$TBStatus, "_",GSEBruno$DiabetesStatus)
+for (i in 1:length(pp)) {
+    p <- pp[i]
+    if (p == "Control_Negative") {
+        pp[i] <- "HCs"
+    } else if (p == "OD_Positive") {
+        pp[i] <- "Diabetes"
+    } else if (p == "PTB_Negative") {
+        pp[i] <- "PTB"
+    } else {
+        pp[i] <- "PTB+Diabetes"
+    }
+}
+GSEBruno$pp <- pp
+
+ssgsea_GSEBruno <- runTBsigProfiler(input = GSEBruno, useAssay = 1, 
+                             signatures = signatures_list,
+                     algorithm = "ssGSEA", update_genes = FALSE,
+                     combineSigAndAlgorithm = FALSE)
+common_sigs <- intersect(names(signatures_list), 
+                         colnames(colData(ssgsea_GSEBruno)))
+# p_dia_ssgsea <- signatureBoxplot_edit(inputData = ssgsea_GSEBruno,
+#                  name = NULL,
+#                  signatureColNames = common_sigs,
+#                  annotationColName = "pp") +
+#     theme(axis.title.x = element_blank(),
+#           axis.text.x = element_text(angle = 45, hjust=0.95, vjust=1),
+#           legend.title = element_blank())
+# ggsave(p_dia_ssgsea, 
+#        file = file.path(wd, "Figures_and_tables/p_dia_ssgsea.pdf"),
+#        device = "pdf", height = 10, width = 17)
+
+plage_GSEBruno <- runTBsigProfiler(input = GSEBruno, useAssay = 1, 
+                                    signatures = signatures_list,
+                                    algorithm = "PLAGE", update_genes = FALSE,
+                                    combineSigAndAlgorithm = FALSE)
+# Choose 9 as an example
+sigs_example <- c("Bloom_OD_144", "Chen_HIV_4", "Darboe_RISK_11", 
+                  "Hoang_OD_20", "Sweeney_OD_3", "Suliman_4",
+                  "Zak_RISK_16", "Walter_51", "Zimmer_RES_3")
+ssgsea_GSEBruno_long <- colData(ssgsea_GSEBruno) |> 
+    as.data.frame() |> 
+    dplyr::select(sigs_example, pp) |> 
+    reshape2::melt() |> 
+    dplyr::mutate(Method = "ssGSEA")
+plage_GSEBruno_long <- colData(plage_GSEBruno) |> 
+    as.data.frame() |> 
+    dplyr::select(sigs_example, pp) |> 
+    reshape2::melt() |> 
+    dplyr::mutate(Method = "PLAGE")
+
+GSEBruno_long <- rbind(ssgsea_GSEBruno_long, plage_GSEBruno_long)
+GSEBruno_long$pp <- factor(GSEBruno_long$pp, 
+                           levels = c("HCs", "PTB", "Diabetes", "PTB+Diabetes"))
+p_dia_example <- ggplot(GSEBruno_long, aes(x = pp, y = value, fill = Method)) +
+    geom_boxplot() +
+    facet_wrap(~variable, scale = "free_y") +
+    ylab("Scores") +
+    theme_bw() +
+    theme(axis.title.x = element_blank(),
+          axis.text.x = element_text(angle = 45, hjust=0.95, vjust=1))
+ggsave(p_dia_example,
+       file = file.path(wd, "Figures_and_tables/p_dia_example.pdf"),
+       device = "pdf", height = 6, width = 8)
+# common_sigs <- intersect(names(signatures_list), colnames(colData(GSEBruno)))
+# p_dia_plage <- signatureBoxplot_edit(inputData = plage_GSEBruno,
+#                                  name = NULL,
+#                                  signatureColNames = common_sigs,
+#                                  annotationColName = "pp") +
+#     theme(axis.title.x = element_blank(),
+#           axis.text.x = element_text(angle = 45, hjust=0.95, vjust=1),
+#           legend.title = element_blank())
+# ggsave(p_dia_plage, 
+#        file = file.path(wd, "Figures_and_tables/p_dia_plage.pdf"),
+#        device = "pdf", height = 10, width = 17)
+
+#### Additional analysis for treatment results ####
+# objects_list_trt <- curatedTBData(c("GSE36238", "GSE42831", "GSE56153",
+#                                     "GSE84076", "GSE89403"), dry.run = FALSE)
+
+# objects_list_trt <- lapply(objects_list, function(x) {
+#     if ("TreatmentResult" %in% colnames(colData(x))) {
+#         return(x)
+#         }
+#     return(NULL)
+# }) |> 
+#     plyr::compact()
+#### Table for gene signatures list ####
+signatures_list <- TBSignatureProfiler::TBsignatures[sigatures_names] |> 
+    lapply(update_genenames)
+table_signatures <- lapply(names(signatures_list), function(sig_name) {
+    sig_name_split <- strsplit(sig_name, "_") |> 
+        unlist()
+    n <- length(sig_name_split)
+    if (n == 2) {
+        compare <- "PTB vs. (HCs and/or LTBI)"
+    } else if (n == 3) {
+        type <- sig_name_split[2]
+        if (type == "FAIL") {
+            compare <- "Failure of TB treatment"
+        } else if (type == "HIV") {
+            compare <- "HIV co-infection for PTB vs. (LTBI and/or OD)"
+        } else if (type == "NANO") {
+            compare <- "PTB vs. (HCs and/or LTBI) (NanoString
+nCounter Platform)"
+        } else if (type == "OD") {
+            compare <- "PTB vs. OD"
+        } else if (type == "PNA") {
+            compare <- "PTB vs. Pneumonia"
+        } else if (type == "RES") {
+            compare <- "Response to TB Treatment"
+        } else if (type == "RISK") {
+            compare <- "Progressor vs. Non-progressor"
+        }
+    } else if (n == 4) { # "Gliddon_2_OD_4" 
+        compare <- "PTB vs. OD"
+    }
+    n_genes <- sig_name_split[length(sig_name_split)]
+    genes <- paste0(signatures_list[[sig_name]], collapse = ", ")
+    data.frame(Signatures = sig_name, 
+               Comparison = compare,
+               `Number of genes` = n_genes,
+               `Genes` = genes)
+}) |> 
+    dplyr::bind_rows()
+
+library(xlsx)
+
+write.xlsx(table_signatures, 
+           file.path(wd, "Supplemental_files/Supplemental_file_1_gene_lists.xlsx"),
+           row.names = FALSE)
 
