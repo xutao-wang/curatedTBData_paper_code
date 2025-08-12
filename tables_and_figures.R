@@ -302,51 +302,6 @@ wilcox.test(ssgsea_PTB_Control_AUCs, plage_PTB_Control_AUCs, paired = TRUE)
 wilcox.test(ssgsea_PTB_LTBI_AUCs, plage_PTB_LTBI_AUCs, paired = TRUE)
 
 #### New analysis 20250722 in response to editors ####
-extrac_CI_edit <- function(dat_combine, FUN) {
-    signature_names <- unique(dat_combine$Signature)
-    out <- lapply(signature_names, function(x) {
-        dat_sub <- dat_combine |> 
-            dplyr::filter(Signature == x)
-        if (FUN == 'weighted.mean') {
-            re_AUC <- weighted.mean(dat_sub$AUC, dat_sub$Size)
-            AUC_CI_lower <- weighted.mean(dat_sub$`AUC CI lower.2.5%`, dat_sub$Size)
-            AUC_CI_upper <- weighted.mean(dat_sub$`AUC CI upper.97.5%`, dat_sub$Size)
-            
-            re_sens <- weighted.mean(dat_sub$Sensitivity, dat_sub$Size)
-            Sens_CI_lower <- weighted.mean(dat_sub$`Sens CI lower.2.5%`, dat_sub$Size)
-            Sens_CI_upper <- weighted.mean(dat_sub$`Sens CI upper.97.5%`, dat_sub$Size)
-            
-            re_spec <- weighted.mean(dat_sub$Specificity, dat_sub$Size)
-            Spec_CI_lower <- weighted.mean(dat_sub$`Spec CI lower.2.5%`, dat_sub$Size)
-            Spec_CI_upper <- weighted.mean(dat_sub$`Spec CI upper.97.5%`, dat_sub$Size)
-        } else if (FUN == 'mean') {
-            re_AUC <- mean(dat_sub$AUC)
-            AUC_CI_lower <- mean(dat_sub$`AUC CI lower.2.5%`)
-            AUC_CI_upper <- mean(dat_sub$`AUC CI upper.97.5%`)
-            
-            re_sens <- mean(dat_sub$Sensitivity)
-            Sens_CI_lower <- mean(dat_sub$`Sens CI lower.2.5%`)
-            Sens_CI_upper <- mean(dat_sub$`Sens CI upper.97.5%`)
-            
-            re_spec <- mean(dat_sub$Specificity)
-            Spec_CI_lower <- mean(dat_sub$`Spec CI lower.2.5%`)
-            Spec_CI_upper <- mean(dat_sub$`Spec CI upper.97.5%`)
-        }
-        AUC_CI <- sprintf("%.2f (%.2f - %.2f)", 
-                          re_AUC, AUC_CI_lower, AUC_CI_upper)
-        Sens_CI <- sprintf("%.2f (%.2f - %.2f)", 
-                           re_sens, Sens_CI_lower, Sens_CI_upper)
-        
-        Spec_CI <- sprintf("%.2f (%.2f - %.2f)", 
-                           re_spec, Spec_CI_lower, Spec_CI_upper)
-        
-        data.frame(Signature = x, AUC = AUC_CI, 
-                   Sensitivity = Sens_CI, Specificity = Spec_CI)
-    }) |> 
-        dplyr::bind_rows()
-    return(out)
-}
-
 library(metafor)
 get_meta_random_effect <- function(df_out_combine, sigs, col_name) {
     df_out <- lapply(sigs, function(sig) {
